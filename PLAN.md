@@ -247,7 +247,7 @@ Use Macie-recognizable formats for fake data (e.g. SSNs as `123-45-6789` next to
 | Judges ask about existing archive vendors (Smarsh, Global Relay, etc.) | They archive communications. We clean up the unstructured files on advisors' drives and integrate with their systems instead of competing |
 | Bedrock access / quota delays | Request model access in hour 0; keep a cached-response fallback for the live demo |
 | Demo Wi-Fi / AWS hiccup | Pre-recorded backup video; pre-processed dataset |
-| Sensitive data handling questions | Encryption at rest by default, least-privilege IAM, synthetic data only; Cognito + KMS keys on the production roadmap |
+| Sensitive data handling questions | Encryption at rest by default, least-privilege IAM, synthetic data only; Cognito + KMS keys on the production roadmap |x
 
 ---
 
