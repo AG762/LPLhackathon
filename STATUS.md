@@ -50,7 +50,15 @@ _Last updated: 2026-10-02_
 ---
 
 ## Anwesh: classification (C), rules (B), dataset (G)
-_Owner to fill in._
+
+| ID | Task | Status | Notes |
+|---|---|---|---|
+| C.1 | Prompt + Bedrock JSON schema | ✅ Done | Nova Micro (amazon.nova-micro-v1:0) tested, 98% accuracy |
+| C.2 | Multi-file text extraction | ✅ Done | Safe reader for .txt, .csv, .json, and binary fallbacks |
+| C.3 | S3 event trigger & DynamoDB write | ✅ Done | SHA-256 fingerprinting + item staging; merged to main |
+| C.4 | Cached-response fallback | ✅ Done | In-memory cache keyed by SHA-256 for demo resilience |
+| C.5 | Error guardrails (corrupt/unknown -> REVIEW) | ✅ Done | Default to UNKNOWN / confidence 0.0 without crashing |
+| B.1 | SEC 17a-4 / FINRA retention rules | 🟡 In progress | Claimed; connecting rules engine to classification output |
 
 ## Aryan: audit log (E) + frontend (F)
 _Last updated: 2026-10-02_
