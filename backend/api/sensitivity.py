@@ -43,3 +43,19 @@ def score_sensitivity(findings):
     """{finding type: count} -> (score, priority). Counts may be ints or DynamoDB Decimals."""
     score = sum(weight(kind) * int(count) for kind, count in (findings or {}).items())
     return score, priority_for(score)
+
+
+def score_file(file):
+    """Score a Files row: Macie findings when it has any, else the classifier's piiTypes (B.7).
+
+    Macie can't read images (photos of IDs, scans), so for those the Bedrock classifier's
+    pii_types stand in, each type counted once since the classifier reports types, not counts.
+    Returns (score, priority, source) with source "macie", "classifier" or "none".
+    """
+    findings = {k: v for k, v in (file.get("macieFindings") or {}).items() if int(v) > 0}
+    if findings:
+        return (*score_sensitivity(findings), "macie")
+    pii_types = file.get("piiTypes") or []
+    if pii_types:
+        return (*score_sensitivity({t: 1 for t in pii_types}), "classifier")
+    return 0, "LOW", "none"
