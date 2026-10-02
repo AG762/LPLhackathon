@@ -2,6 +2,7 @@
 import os
 
 import boto3
+from botocore.config import Config
 
 _s3 = None
 _dynamodb = None
@@ -10,7 +11,9 @@ _dynamodb = None
 def s3():
     global _s3
     if _s3 is None:
-        _s3 = boto3.client("s3")
+        # SigV4: SigV2 presigned URLs sign Content-Type, and browsers always send one, so uploads
+        # from the frontend failed with SignatureDoesNotMatch. SigV4 signs only the host.
+        _s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
     return _s3
 
 

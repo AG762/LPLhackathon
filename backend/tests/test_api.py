@@ -52,3 +52,13 @@ def test_get_file(aws):
     aws.put_item(Item={"fileId": "a", "status": "PENDING"})
     assert call("GET", "/files/a") == (200, {"fileId": "a", "status": "PENDING", "legalHold": False})
     assert call("GET", "/files/missing")[0] == 404
+
+
+def test_upload_url_is_signed_with_sigv4_so_browsers_can_send_a_content_type(aws):
+    # SigV2 presigned URLs sign Content-Type; browsers always send one (e.g. application/pdf),
+    # so every upload from the frontend failed with SignatureDoesNotMatch.
+    status, body = call("POST", "/upload-url", {"filename": "statement.pdf"})
+
+    assert status == 200
+    assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in body["url"]
+    assert "Signature=" not in body["url"].replace("X-Amz-Signature=", "")
