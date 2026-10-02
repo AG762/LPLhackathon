@@ -1,0 +1,144 @@
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 48px 24px;
+  border: 3px dashed var(--ink);
+
+  background: var(--ground);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.dropzone-over {
+  border-color: var(--ink);
+  background: rgb(255 209 0 / 0.14);
+  border-style: solid;
+}
+
+.dropzone-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+
+.dropzone-title {
+  font-family: var(--font-sign);
+  font-weight: 800;
+  font-size: 1.6rem;
+}
+
+.dropzone-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.upload-list {
+  margin-top: 20px;
+  padding: 16px;
+}
+
+.upload-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.upload-failed-count {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.upload-hint {
+  margin-top: 8px;
+  font-size: 0.88rem;
+}
+
+.upload-items {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.upload-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 160px 72px;
+  gap: 12px;
+  align-items: center;
+  padding: 7px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 0.88rem;
+}
+
+.upload-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-size {
+  text-align: right;
+}
+
+.upload-bar {
+  height: 6px;
+  background: var(--layer);
+  overflow: hidden;
+}
+
+.upload-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transform-origin: left;
+  transition: transform 0.15s linear;
+}
+
+.upload-done .upload-bar > span {
+  background: var(--safe);
+}
+
+.upload-failed .upload-bar > span {
+  background: var(--danger);
+}
+
+.upload-state {
+  text-align: right;
+  font-weight: 550;
+}
+
+.upload-done .upload-state {
+  color: var(--safe);
+}
+
+.upload-failed .upload-state {
+  color: var(--danger);
+}
+
+.upload-error {
+  grid-column: 1 / -1;
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 640px) {
+  .upload-item {
+    grid-template-columns: minmax(0, 1fr) 64px;
+  }
+  .upload-size {
+    display: none;
+  }
+  .upload-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
