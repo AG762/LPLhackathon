@@ -74,7 +74,7 @@ _Last updated: 2026-10-02_
 
 | D.3 | Restore from quarantine during the grace period | ✅ Done | `POST /files/{id}/restore`. Moves the object to `restored/<id>/<name>` (outside the `uploads/` trigger, so no re-classification), status back to `PENDING`, `RESTORED` audit entry; 409 if not quarantined or the grace period has ended. Approve accepts `restored/` keys. Live check waits on the process handler fix (new uploads aren't classified on `main`) |
 
-| A.8 (part) | Demo reset script: empty the bucket (all versions) + tables, then re-seed | 🟡 In progress | `scripts/reset_demo.py`. Leaves `records/` alone (Object Lock). Re-seed runs A.7 once it exists |
+| A.8 (part) | Demo reset script: empty the bucket (all versions) + tables, then re-seed | ✅ Done | `python scripts/reset_demo.py` (dry run) then `--yes`. Finds the bucket and tables from the `shredsafe` stack outputs; deletes all versions except `records/` (Object Lock); empties Files + AuditLog, keeps LegalHolds + RetentionRules. Runs `scripts/seed.py` afterwards if A.7 adds it there |
 
 **Not yet verified live:** E and F are tested locally (backend tests + mock mode) but not against the deployed stack. Needs a redeploy with the E changes.
 
