@@ -42,6 +42,9 @@ export interface FileRecord {
   ruleApplied?: string
   citation?: string
   legalHold?: boolean
+  // Set by GET /files and /files/{id} from the active LegalHolds (same check as approve).
+  holdId?: string
+  holdReason?: string
   status: FileStatus
 }
 

@@ -4,6 +4,7 @@ import uuid
 from decimal import Decimal
 
 import aws
+import holds
 from http_utils import HttpError
 
 UPLOAD_URL_TTL_SECONDS = 15 * 60
@@ -42,6 +43,10 @@ def list_files(req):
     if status:
         items = [f for f in items if f.get("status") == status]
 
+    active = holds.active_holds()
+    for item in items:
+        _flag_hold(item, active)
+
     if req.query.get("sort") == "priority":
         items.sort(key=lambda f: (
             PRIORITY_ORDER.get(f.get("priority"), len(PRIORITY_ORDER)),
@@ -59,5 +64,16 @@ def load_file(file_id):
     return item
 
 
+def _flag_hold(item, active_holds):
+    """Add legalHold/holdId/holdReason using the same check as approve, so the
+    queue shows a file as held before anyone tries to approve it."""
+    hold = holds.find_hold(item, active_holds)
+    item["legalHold"] = hold is not None
+    if hold:
+        item["holdId"] = hold.get("holdId")
+        item["holdReason"] = hold.get("reason", "")
+    return item
+
+
 def get_file(req):
-    return 200, load_file(req.params["file_id"])
+    return 200, _flag_hold(load_file(req.params["file_id"]), holds.active_holds())
