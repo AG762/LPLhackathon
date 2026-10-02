@@ -50,5 +50,5 @@ def test_list_filters_by_status(aws):
 
 def test_get_file(aws):
     aws.put_item(Item={"fileId": "a", "status": "PENDING"})
-    assert call("GET", "/files/a") == (200, {"fileId": "a", "status": "PENDING"})
+    assert call("GET", "/files/a") == (200, {"fileId": "a", "status": "PENDING", "legalHold": False})
     assert call("GET", "/files/missing")[0] == 404
