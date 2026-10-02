@@ -60,7 +60,7 @@ _Last updated: 2026-10-02_
 | C.5 | Error guardrails (corrupt/unknown -> REVIEW) | ✅ Done | Default to UNKNOWN / confidence 0.0 without crashing |
 | B.1 | SEC 17a-4 / FINRA retention rules | 🟡 In progress | Claimed; connecting rules engine to classification output |
 
-## Aryan: audit log (E) + frontend (F)
+## Aryan: audit log (E), frontend (F), plus D.3 / D.4 / D.7 / demo reset
 _Last updated: 2026-10-02_
 
 | ID | Task | Status | Notes |
@@ -72,21 +72,17 @@ _Last updated: 2026-10-02_
 | F.1 | App shell, routing, mock/live API toggle, demo advisor | ✅ Done | `cd frontend && npm run dev`; sidebar switches Demo ↔ Live API |
 | F.2 | Folder drag-and-drop upload with per-file progress | ✅ Done | Presigned PUTs, 4 at a time |
 | F.3 | Review queue sorted by exposure, rationale + rule on expand | ✅ Done | |
-| F.4 | Approve / reject / bulk-approve / restore; held files blocked | ✅ Done | Reads `legalHold` from `/files`; bulk handles `{approved, blocked}`. Restore waits on D.3 |
+| F.4 | Approve / reject / bulk-approve / restore; held files blocked | ✅ Done | Reads `legalHold` from `/files`; bulk handles `{approved, blocked}`. Restore + "Purge now" wired to D.3 / D.4 |
 | F.5 | Scan button + re-sort animation | ✅ Done | Live mode waits on D.5 |
 | F.6 | Live updates (polls `/files` every 3 s) | ✅ Done | |
 | F.7 | Dashboard | ✅ Done | Falls back to computing from `/files` until D.6 lands; reference calc in `frontend/src/lib/metrics.ts` |
 | F.8 | Audit log view, integrity badge, certificate download | ✅ Done | Certificate button disabled while the check fails |
-
 | D.3 | Restore from quarantine during the grace period | ✅ Done | `POST /files/{id}/restore`. Moves the object to `restored/<id>/<name>` (outside the `uploads/` trigger, so no re-classification), status back to `PENDING`, `RESTORED` audit entry; 409 if not quarantined or the grace period has ended. Approve accepts `restored/` keys. Live check waits on the process handler fix (new uploads aren't classified on `main`) |
-
 | A.8 (part) | Demo reset script: empty the bucket (all versions) + tables, then re-seed | ✅ Done | `python scripts/reset_demo.py` (dry run) then `--yes`. Finds the bucket and tables from the `shredsafe` stack outputs; deletes all versions except `records/` (Object Lock); empties Files + AuditLog, keeps LegalHolds + RetentionRules. Runs `scripts/seed.py` afterwards if A.7 adds it there |
-
 | D.4 | Purge → `PURGED` + audit entry | ✅ Done | `POST /files/{id}/purge` deletes every stored version (uploads/, quarantine/, restored/) and writes a `PURGED` audit entry; before the grace period ends it needs `DemoControls=true` ("Purge now" button in the queue). `POST /files/purge-expired` marks every file past its grace period |
-
 | D.7 | RETAIN + HIGH sensitivity → `records/` with Object Lock, `LOCKED` | ✅ Done | `backend/api/routes/records.py`. `POST /files/lock-sensitive` locks every PENDING file with `recommendation: RETAIN`, `priority: HIGH` and a `keepUntil`, unless it's on a legal hold: copy to `records/`, GOVERNANCE retention until `keepUntil`, status `LOCKED`, `LOCKED` audit entry. **D.5:** call `records.lock_if_needed(file)` after scoring, or hit the route after ingest |
 
-**Not yet verified live:** E and F are tested locally (backend tests + mock mode) but not against the deployed stack. Needs a redeploy with the E changes.
+**Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
 
 **Contracts others depend on**
 - Call `audit_log.append(actor, action, file, rule_applied=None, detail=None)` for every state change; it reads `fileId` and `sha256` from `file`.
