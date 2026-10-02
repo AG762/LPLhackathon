@@ -29,12 +29,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <motion.div
               key={t.id}
               className={`toast ${t.tone === 'error' ? 'error' : ''}`}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              layout
+              initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             >
-              {t.message}
+              <span className="toast-mark" aria-hidden="true">
+                <svg viewBox="0 0 16 16">
+                  {t.tone === 'error' ? (
+                    <path d="M4 4l8 8M12 4l-8 8" stroke="#fff" strokeWidth="2.4" />
+                  ) : (
+                    <path d="m3.5 8.5 3 3 6-7" fill="none" stroke="#fff" strokeWidth="2.4" />
+                  )}
+                </svg>
+              </span>
+              <span>{t.message}</span>
             </motion.div>
           ))}
         </AnimatePresence>

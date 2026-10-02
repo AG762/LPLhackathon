@@ -1,58 +1,54 @@
 .audit-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 460px;
 }
 
-/* ---------- seal ---------- */
-
-.seal {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border-radius: var(--radius-m);
-  margin-bottom: 12px;
-  border: 1px solid;
+.cert-blocked {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--danger);
 }
 
-.seal-ok {
-  background: var(--verified-wash);
-  border-color: color-mix(in srgb, var(--verified) 30%, transparent);
-  color: var(--verified);
+.audit-sign {
+  margin-bottom: 20px;
 }
 
-.seal-broken {
-  background: var(--hold-wash);
-  border-color: color-mix(in srgb, var(--hold) 40%, transparent);
-  color: var(--hold);
+.audit-seal {
+  margin-bottom: 16px;
 }
 
-.seal-glyph {
-  width: 48px;
-  height: 30px;
-  flex: none;
+.audit-seal .sign {
+  max-width: none;
 }
 
-.seal-title {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  font-weight: 750;
-  font-stretch: 110%;
+.audit-seal .sign-band {
+  font-size: 1.5rem;
+  padding: 8px 14px;
 }
 
-.seal-sub {
-  color: var(--ink);
-  font-size: 0.9rem;
+.audit-seal .sign-band svg {
+  width: 26px;
+  height: 26px;
+}
+
+.audit-seal .sign-body {
+  font-size: 1rem;
 }
 
 .rehearsal {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  font-size: 0.85rem;
-  margin-bottom: 20px;
+  gap: 10px;
+  font-size: 0.88rem;
+  margin-bottom: 28px;
+  padding: 10px 14px;
+  background: var(--layer);
 }
 
 /* ---------- chain ---------- */
@@ -61,62 +57,81 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  --rail: var(--verified);
+  border-top: 2px solid var(--ink);
+  --rail: var(--ink);
 }
 
 .link {
-  position: relative;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
   gap: 16px;
   align-items: center;
-  padding: 12px 18px 12px 12px;
-  margin-top: 14px;
-  background: var(--surface);
-  border: 2px solid var(--rail);
-  border-radius: 14px;
+  padding: 0 14px 0 0;
+  border-bottom: 1px solid var(--rule);
+  min-height: 64px;
 }
 
-.link:first-child {
-  margin-top: 0;
+.link-rail {
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
 }
 
-/* The joint between two entries: a short bar that reads as the chain's connecting link. */
-.link-joint {
+/* The rail is the chain: each entry's line runs up into the one before it. */
+.link-rail::after {
+  content: '';
   position: absolute;
-  left: 32px;
-  top: -16px;
-  width: 6px;
-  height: 18px;
-  border-radius: 3px;
+  left: 50%;
+  top: 50%;
+  bottom: -1px;
+  width: 3px;
+  margin-left: -1.5px;
   background: var(--rail);
 }
 
-.link-seq {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+.link:last-child .link-rail::after {
+  display: none;
+}
+
+.link-joint {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 50%;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--rail);
+}
+
+.link-node {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
+  background: var(--ground);
+  border: 3px solid var(--rail);
+  font-size: 0.78rem;
   font-weight: 700;
-  font-size: 0.85rem;
-  background: color-mix(in srgb, var(--rail) 14%, var(--surface));
-  color: var(--ink);
 }
 
 .link-top {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 4px 12px;
   align-items: baseline;
 }
 
 .link-action {
-  font-weight: 650;
+  font-family: var(--font-sign);
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 
 .link-file {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -124,7 +139,7 @@
 }
 
 .link-meta {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   margin-top: 2px;
 }
 
@@ -137,42 +152,50 @@
 }
 
 .link-broken {
-  --rail: var(--hold);
-  background: var(--hold-wash);
-  border-width: 3px;
+  --rail: var(--danger);
+  background: var(--danger-wash);
 }
 
+/* the joint into the broken entry is snapped */
 .link-broken .link-joint {
-  /* the joint above the broken entry is snapped: draw it as two separated stubs */
-  height: 6px;
-  top: -16px;
-  box-shadow: 0 12px 0 var(--hold);
+  height: 12%;
+}
+
+.link-broken .link-node {
+  background: var(--danger);
+  color: #fff;
 }
 
 .link-untrusted {
-  --rail: var(--rule-strong);
-  border-style: dashed;
-  opacity: 0.75;
+  --rail: #a5abb3;
+}
+
+.link-untrusted .link-rail::after,
+.link-untrusted .link-joint {
+  background: repeating-linear-gradient(to bottom, var(--rail) 0 5px, transparent 5px 9px);
+}
+
+.link-untrusted .link-body,
+.link-untrusted .link-hashes {
+  color: var(--ink-2);
 }
 
 .link-alarm {
-  margin-top: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--hold);
+  margin-top: 4px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--danger);
 }
 
 @media (max-width: 640px) {
   .link {
-    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr);
+    padding-bottom: 8px;
   }
   .link-hashes {
     grid-column: 2;
     align-items: flex-start;
     flex-direction: row;
     gap: 10px;
-  }
-  .link-joint {
-    left: 26px;
   }
 }

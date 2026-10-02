@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { api, ApiError } from '../api/client'
+import { Chip, Sign } from '../components/Sign'
 import { useFiles } from '../state/files'
 import { useToast } from '../state/toast'
 import type { FileRecord, FileStatus, ScanState } from '../types'
@@ -21,6 +22,10 @@ const FILTERS: { value: Filter; label: string }[] = [
 
 const SCAN_POLL_MS = 2000
 
+// Serious tool: springs settle without overshoot.
+const REORDER = { type: 'spring', bounce: 0, visualDuration: 0.45 } as const
+const EASE_OUT = [0.16, 1, 0.3, 1] as const
+
 function errorMessage(e: unknown) {
   return e instanceof Error ? e.message : String(e)
 }
@@ -33,7 +38,13 @@ export default function QueuePage() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [scanState, setScanState] = useState<ScanState>('IDLE')
+  // After a scan re-sorts the queue, each row that moved up (got riskier) keeps a marker until the advisor has looked at it.
+  const [moved, setMoved] = useState<Map<string, number>>(new Map())
+  const orderBeforeScan = useRef<Map<string, number> | null>(null)
   const scanTimer = useRef<number | null>(null)
+  const visibleRef = useRef<FileRecord[]>([])
+  // Files seen on a previous render. Only files that arrive after that (uploads streaming in) get the arrival flash.
+  const knownIds = useRef<Set<string> | null>(null)
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { ALL: files.length }
@@ -46,10 +57,21 @@ export default function QueuePage() {
     return list.some((f) => f.priority) ? sortByPriority(list) : list
   }, [files, filter])
 
+  useEffect(() => {
+    visibleRef.current = visible
+  }, [visible])
+
+  const isFresh = (id: string) => knownIds.current != null && !knownIds.current.has(id)
+  useEffect(() => {
+    if (!loaded) return
+    knownIds.current = new Set(files.map((f) => f.fileId))
+  }, [files, loaded])
+
   const pending = files.filter((f) => f.status === 'PENDING')
-  const deletable = visible.filter(canApprove)
+  const deletable = useMemo(() => visible.filter(canApprove), [visible])
   const heldCount = pending.filter(isOnHold).length
   const reviewCount = pending.filter((f) => f.recommendation === 'REVIEW').length
+  const highCount = pending.filter((f) => canApprove(f) && f.priority === 'HIGH').length
   const scanned = files.some((f) => f.priority)
 
   // Drop selections that are no longer approvable (approved elsewhere, filtered out, re-classified).
@@ -60,6 +82,19 @@ export default function QueuePage() {
       return next.size === prev.size ? prev : next
     })
   }, [deletable])
+
+  // Once the post-scan list renders, compare each row's position with where it sat before the scan.
+  useEffect(() => {
+    const before = orderBeforeScan.current
+    if (!before || !visible.some((f) => f.priority)) return
+    orderBeforeScan.current = null
+    const next = new Map<string, number>()
+    visible.forEach((f, i) => {
+      const was = before.get(f.fileId)
+      if (was != null && was > i) next.set(f.fileId, was - i)
+    })
+    setMoved(next)
+  }, [visible])
 
   useEffect(() => {
     api
@@ -77,15 +112,16 @@ export default function QueuePage() {
       try {
         const s = await api.scanStatus()
         if (s.state === 'COMPLETE') {
+          orderBeforeScan.current = new Map(visibleRef.current.map((f, i) => [f.fileId, i]))
           const { updated } = await api.ingestScan()
           await refresh()
           setScanState('COMPLETE')
-          toast(`Scan finished. ${updated} files scored; the riskiest are now at the top.`)
+          toast(`Scan finished. ${updated} files scored, riskiest first.`)
           return
         }
         if (s.state === 'FAILED') {
           setScanState('FAILED')
-          toast('The sensitive-data scan failed. Try starting it again.', 'error')
+          toast("The sensitive-data scan didn't finish. Start it again.", 'error')
           return
         }
         scanTimer.current = window.setTimeout(poll, SCAN_POLL_MS)
@@ -107,6 +143,15 @@ export default function QueuePage() {
     } catch (e) {
       toast(errorMessage(e), 'error')
     }
+  }
+
+  function seen(id: string) {
+    setMoved((m) => {
+      if (!m.has(id)) return m
+      const next = new Map(m)
+      next.delete(id)
+      return next
+    })
   }
 
   async function act(f: FileRecord, action: 'approve' | 'reject' | 'restore') {
@@ -137,13 +182,19 @@ export default function QueuePage() {
     const ids = [...selected]
     setBusy(new Set(ids))
     try {
-      const updated = await api.bulkApprove(ids)
-      upsert(updated)
+      const { approved, blocked } = await api.bulkApprove(ids)
+      upsert(approved)
       setSelected(new Set())
-      const bytes = updated.reduce((s, f) => s + (f.sizeBytes ?? 0), 0)
-      toast(`Approved ${updated.length} files (${formatBytes(bytes)}). They're in the grace period now.`)
+      const bytes = approved.reduce((s, f) => s + (f.sizeBytes ?? 0), 0)
+      if (approved.length) {
+        toast(`Approved ${approved.length} files (${formatBytes(bytes)}). They're in the grace period now.`)
+      }
+      if (blocked.length) {
+        toast(`${blocked.length} not approved. ${blocked[0].error}`, 'error')
+        void refresh()
+      }
     } catch (e) {
-      toast(e instanceof ApiError && e.status === 409 ? `Nothing deleted: ${e.message}` : errorMessage(e), 'error')
+      toast(errorMessage(e), 'error')
     } finally {
       setBusy(new Set())
     }
@@ -159,6 +210,7 @@ export default function QueuePage() {
   }
 
   const allSelected = deletable.length > 0 && deletable.every((f) => selected.has(f.fileId))
+  const selectedBytes = files.filter((f) => selected.has(f.fileId)).reduce((s, f) => s + (f.sizeBytes ?? 0), 0)
 
   return (
     <>
@@ -170,45 +222,67 @@ export default function QueuePage() {
             Nothing is gone for good until the grace period ends.
           </p>
         </div>
-        <ScanButton state={scanState} scanned={scanned} onStart={startScan} />
+        <ScanControl state={scanState} scanned={scanned} onStart={startScan} />
       </header>
 
-      {error && <div className="notice error">{error}</div>}
+      {error && (
+        <Sign level="warning" compact className="page-sign">
+          {error}
+        </Sign>
+      )}
 
       {pending.length > 0 && (
-        <p className="queue-summary">
-          <span>
+        <div className="queue-summary" aria-label="Summary">
+          <span className="summary-item">
             <strong className="num">{pending.filter(canApprove).length}</strong> ready to delete
+            {highCount > 0 && (
+              <Chip level="solid">
+                <span className="num">{highCount}</span> HIGH EXPOSURE
+              </Chip>
+            )}
           </span>
           {heldCount > 0 && (
-            <span className="summary-hold">
-              <strong className="num">{heldCount}</strong> blocked by a legal hold
+            <span className="summary-item">
+              <Chip level="danger">
+                <span className="num">{heldCount}</span> ON LEGAL HOLD
+              </Chip>
+              preserved
             </span>
           )}
           {reviewCount > 0 && (
-            <span>
-              <strong className="num">{reviewCount}</strong> need your judgment
+            <span className="summary-item">
+              <Chip level="notice">
+                <span className="num">{reviewCount}</span> NEED REVIEW
+              </Chip>
+              classification unclear
             </span>
           )}
-        </p>
+        </div>
       )}
 
-      <div className="filters" role="tablist" aria-label="Filter by status">
+      <div className="tabs" role="tablist" aria-label="Filter by status">
         {FILTERS.map((f) => (
           <button
             key={f.value}
             role="tab"
             aria-selected={filter === f.value}
-            className="filter"
+            className="tab"
             onClick={() => setFilter(f.value)}
           >
             {f.label}
-            <span className="num">{counts[f.value] ?? 0}</span>
+            <span className="tab-count num">{counts[f.value] ?? 0}</span>
           </button>
         ))}
       </div>
 
-      <section className="panel queue" aria-label="Files">
+      {moved.size > 0 && (
+        <p className="moved-note">
+          <span className="moved">Up 3</span> means the file moved up 3 places after the scan because it holds more
+          client data than expected. The marker clears once you've looked at the row.
+        </p>
+      )}
+
+      <section className="queue" aria-label="Files">
         <div className="queue-head">
           <label className="check">
             <input
@@ -219,20 +293,20 @@ export default function QueuePage() {
             />
             <span className="visually-hidden">Select every file that can be deleted</span>
           </label>
-          <span>Risk</span>
+          <span>Exposure (score)</span>
           <span>File</span>
           <span>Recommendation</span>
           <span>Keep until</span>
-          <span />
+          <span className="queue-head-actions">Decision</span>
         </div>
 
         {!loaded ? (
-          <div className="empty">Loading files…</div>
+          <SkeletonRows />
         ) : visible.length === 0 ? (
           <EmptyState filter={filter} hasFiles={files.length > 0} />
         ) : (
           <ul className="rows">
-            <AnimatePresence initial={false}>
+            <AnimatePresence initial={false} mode="popLayout">
               {visible.map((f) => (
                 <Row
                   key={f.fileId}
@@ -240,8 +314,14 @@ export default function QueuePage() {
                   selected={selected.has(f.fileId)}
                   expanded={expanded === f.fileId}
                   busy={busy.has(f.fileId)}
+                  movedBy={moved.get(f.fileId)}
+                  fresh={isFresh(f.fileId)}
+                  onSeen={() => seen(f.fileId)}
                   onToggleSelect={() => toggle(f.fileId)}
-                  onToggleExpand={() => setExpanded((x) => (x === f.fileId ? null : f.fileId))}
+                  onToggleExpand={() => {
+                    seen(f.fileId)
+                    setExpanded((x) => (x === f.fileId ? null : f.fileId))
+                  }}
                   onAct={(a) => act(f, a)}
                 />
               ))}
@@ -254,17 +334,16 @@ export default function QueuePage() {
         {selected.size > 0 && (
           <motion.div
             className="bulk-bar"
-            initial={{ y: 24, opacity: 0 }}
+            initial={{ y: 16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 24, opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            exit={{ y: 16, opacity: 0 }}
+            transition={{ duration: 0.2, ease: EASE_OUT }}
           >
             <span>
-              <strong className="num">{selected.size}</strong> selected,{' '}
-              {formatBytes(files.filter((f) => selected.has(f.fileId)).reduce((s, f) => s + (f.sizeBytes ?? 0), 0))}
+              <strong className="num">{selected.size}</strong> selected, {formatBytes(selectedBytes)}
             </span>
             <button className="btn btn-quiet" onClick={() => setSelected(new Set())}>
-              Clear
+              Clear selection
             </button>
             <button className="btn btn-primary" onClick={bulkApprove} disabled={busy.size > 0}>
               Approve {selected.size} for deletion
@@ -276,12 +355,14 @@ export default function QueuePage() {
   )
 }
 
-function ScanButton({ state, scanned, onStart }: { state: ScanState; scanned: boolean; onStart: () => void }) {
+function ScanControl({ state, scanned, onStart }: { state: ScanState; scanned: boolean; onStart: () => void }) {
   if (state === 'RUNNING') {
     return (
-      <div className="scan scan-running" role="status">
-        <span className="scan-pulse" aria-hidden="true" />
-        Scanning files for SSNs, account numbers and birth dates…
+      <div className="scan-running" role="status">
+        <span>Scanning for SSNs, account numbers and birth dates</span>
+        <span className="scan-track" aria-hidden="true">
+          <span />
+        </span>
       </div>
     )
   }
@@ -289,6 +370,25 @@ function ScanButton({ state, scanned, onStart }: { state: ScanState; scanned: bo
     <button className="btn" onClick={onStart}>
       {scanned ? 'Scan for sensitive data again' : 'Scan for sensitive data'}
     </button>
+  )
+}
+
+function SkeletonRows() {
+  return (
+    <ul className="rows" aria-label="Loading files">
+      {Array.from({ length: 6 }, (_, i) => (
+        <li key={i} className="row row-skeleton">
+          <div className="row-main">
+            <span />
+            <span className="sk sk-chip" />
+            <span className="sk sk-name" />
+            <span className="sk sk-chip" />
+            <span className="sk sk-date" />
+            <span />
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -305,26 +405,30 @@ function EmptyState({ filter, hasFiles }: { filter: Filter; hasFiles: boolean })
     )
   }
   const copy: Partial<Record<Filter, string>> = {
-    PENDING: 'Every file has a decision. Check the dashboard to see what was cleared.',
+    PENDING: 'Every file has a decision. The dashboard shows what was cleared.',
     QUARANTINED: 'No files are in the grace period. Approved deletions wait here before they are purged.',
-    LOCKED: 'No files are locked. High-sensitivity records that must be kept are moved here after a scan.',
-    REJECTED: "No files have been kept against a recommendation.",
+    LOCKED: 'No files are locked. High-sensitivity records that must be kept move here after a scan.',
+    REJECTED: 'No files have been kept against a recommendation.',
     PURGED: 'Nothing has been permanently deleted yet.',
   }
   return <div className="empty">{copy[filter] ?? 'No files match this filter.'}</div>
 }
 
 interface RowProps {
+  ref?: Ref<HTMLLIElement>
   file: FileRecord
   selected: boolean
   expanded: boolean
   busy: boolean
+  movedBy?: number
+  fresh: boolean
+  onSeen: () => void
   onToggleSelect: () => void
   onToggleExpand: () => void
   onAct: (action: 'approve' | 'reject' | 'restore') => void
 }
 
-function Row({ file: f, selected, expanded, busy, onToggleSelect, onToggleExpand, onAct }: RowProps) {
+function Row({ ref, file: f, selected, expanded, busy, movedBy, fresh, onSeen, onToggleSelect, onToggleExpand, onAct }: RowProps) {
   const held = isOnHold(f)
   const approvable = canApprove(f)
   const name = fileName(f)
@@ -332,13 +436,15 @@ function Row({ file: f, selected, expanded, busy, onToggleSelect, onToggleExpand
 
   return (
     <motion.li
+      ref={ref}
       layout="position"
-      initial={{ opacity: 0, backgroundColor: 'var(--amber-wash)' }}
-      animate={{ opacity: 1, backgroundColor: 'rgba(0,0,0,0)' }}
-      exit={{ opacity: 0, height: 0, transition: { duration: 0.22 } }}
-      style={{ overflow: 'hidden' }}
-      transition={{ layout: { type: 'spring', stiffness: 380, damping: 36 }, backgroundColor: { duration: 1.6 } }}
+      initial={fresh ? { opacity: 0, backgroundColor: 'rgba(255, 209, 0, 0.35)' } : { opacity: 0 }}
+      animate={{ opacity: 1, backgroundColor: 'rgba(255, 209, 0, 0)' }}
+      exit={{ opacity: 0, x: 24, transition: { duration: 0.2, ease: EASE_OUT } }}
+      transition={{ layout: REORDER, opacity: { duration: 0.2 }, backgroundColor: { duration: 1.6, ease: EASE_OUT } }}
       className={`row ${held ? 'row-held' : ''} ${selected ? 'row-selected' : ''}`}
+      onPointerEnter={movedBy ? onSeen : undefined}
+      onFocusCapture={movedBy ? onSeen : undefined}
     >
       <div className="row-main">
         <label className="check">
@@ -346,21 +452,24 @@ function Row({ file: f, selected, expanded, busy, onToggleSelect, onToggleExpand
           <span className="visually-hidden">Select {name}</span>
         </label>
 
-        <Priority file={f} />
+        <div className="row-risk">
+          <Priority file={f} />
+          {movedBy != null && <MovedMarker by={movedBy} />}
+        </div>
 
         <button className="row-file" onClick={onToggleExpand} aria-expanded={expanded} aria-controls={detailsId}>
           <span className="row-name">{name}</span>
-          <span className="row-type muted">
+          <span className="row-type">
             {docTypeLabel(f.docType)}
             {f.sizeBytes != null && `, ${formatBytes(f.sizeBytes)}`}
           </span>
         </button>
 
-        <div>
-          <RecommendationBadge file={f} />
+        <div className="row-rec">
+          <RecommendationTag file={f} />
         </div>
 
-        <div className="row-keep num">{f.keepUntil ? formatDate(f.keepUntil) : held ? 'Hold active' : '—'}</div>
+        <div className="row-keep num">{held ? 'Until hold lifts' : f.keepUntil ? formatDate(f.keepUntil) : '—'}</div>
 
         <div className="row-actions">
           <RowActions file={f} busy={busy} onAct={onAct} />
@@ -368,10 +477,16 @@ function Row({ file: f, selected, expanded, busy, onToggleSelect, onToggleExpand
       </div>
 
       {held && f.status === 'PENDING' && (
-        <p className="hold-line">
-          <strong>Blocked by legal hold.</strong> {f.clientName ? `${f.clientName} is` : 'This client is'} under an
-          active hold, so this file can't be deleted, even though it looks like clutter.
-        </p>
+        <Sign level="danger" word="LEGAL HOLD" compact className="hold-sign">
+          {f.clientName ? (
+            <>
+              Files for <strong>{f.clientName}</strong> are under a legal hold.
+            </>
+          ) : (
+            'This file is under a legal hold.'
+          )}{' '}
+          It's preserved until Compliance releases the hold, regardless of its retention date.
+        </Sign>
       )}
 
       <AnimatePresence initial={false}>
@@ -382,7 +497,7 @@ function Row({ file: f, selected, expanded, busy, onToggleSelect, onToggleExpand
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.22, ease: EASE_OUT }}
           >
             <Details file={f} />
           </motion.div>
@@ -392,39 +507,55 @@ function Row({ file: f, selected, expanded, busy, onToggleSelect, onToggleExpand
   )
 }
 
-function Priority({ file: f }: { file: FileRecord }) {
-  if (!f.priority) return <span className="prio prio-none muted">Not scanned</span>
-  const label = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }[f.priority]
+function MovedMarker({ by }: { by: number }) {
   return (
-    <span className={`prio prio-${f.priority.toLowerCase()}`} title={`Sensitivity score ${f.sensitivityScore ?? 0}`}>
-      <span className="prio-dot" aria-hidden="true" />
-      {label}
-      <span className="prio-score num">{f.sensitivityScore ?? 0}</span>
+    <span className="moved" aria-label={`Moved up ${by} places after the scan`}>
+      Up <span className="num">{by}</span>
     </span>
   )
 }
 
-function RecommendationBadge({ file: f }: { file: FileRecord }) {
-  if (isOnHold(f)) return <span className="badge badge-hold">Legal hold</span>
+// Exposure is how much client data a file holds. It sets order, not permission, so it uses a navy
+// meter rather than safety colours (those are reserved for files that can't be deleted).
+const EXPOSURE_LEVEL = { HIGH: 3, MEDIUM: 2, LOW: 1 } as const
+
+function Priority({ file: f }: { file: FileRecord }) {
+  if (!f.priority) return <Chip level="ghost">Not scanned</Chip>
+  const level = EXPOSURE_LEVEL[f.priority]
+  return (
+    <span className={`exposure exposure-${f.priority.toLowerCase()}`}>
+      <span className="exposure-meter" aria-hidden="true">
+        {[1, 2, 3].map((n) => (
+          <span key={n} className={n <= level ? 'on' : ''} />
+        ))}
+      </span>
+      <span className="exposure-label">{f.priority}</span>
+      <span className="exposure-score num">{f.sensitivityScore ?? 0}</span>
+    </span>
+  )
+}
+
+function RecommendationTag({ file: f }: { file: FileRecord }) {
+  if (isOnHold(f)) return <Chip level="danger">LEGAL HOLD</Chip>
   switch (f.status) {
     case 'QUARANTINED':
-      return <span className="badge badge-grace">In grace period</span>
+      return <Chip level="ghost">In grace period</Chip>
     case 'PURGED':
-      return <span className="badge badge-purged">Purged</span>
+      return <Chip level="ghost">Purged</Chip>
     case 'LOCKED':
-      return <span className="badge badge-locked">Locked record</span>
+      return <Chip level="solid">LOCKED RECORD</Chip>
     case 'REJECTED':
-      return <span className="badge badge-kept">Kept by you</span>
+      return <Chip level="plain">Kept by you</Chip>
   }
   switch (f.recommendation) {
     case 'DELETE':
-      return <span className="badge badge-delete">Delete</span>
+      return <Chip level="solid">DELETE</Chip>
     case 'RETAIN':
-      return <span className="badge badge-retain">Retain</span>
+      return <Chip level="plain">RETAIN</Chip>
     case 'REVIEW':
-      return <span className="badge badge-review">Needs review</span>
+      return <Chip level="notice">NEEDS REVIEW</Chip>
     default:
-      return <span className="badge muted">Classifying…</span>
+      return <Chip level="ghost">Classifying</Chip>
   }
 }
 
@@ -437,30 +568,35 @@ function RowActions({ file: f, busy, onAct }: { file: FileRecord; busy: boolean;
     )
   }
   if (f.status !== 'PENDING') return null
-  if (isOnHold(f)) return <span className="muted row-note">Can't be deleted</span>
-  if (f.recommendation === 'RETAIN') return <span className="muted row-note">Kept automatically</span>
+  if (isOnHold(f)) return <span className="row-note">Preserved</span>
+  if (f.recommendation === 'RETAIN') return <span className="row-note">Within retention</span>
   return (
     <>
-      {f.recommendation === 'DELETE' && (
-        <button className="btn btn-small btn-primary" disabled={busy} onClick={() => onAct('approve')}>
-          Approve
-        </button>
-      )}
       <button className="btn btn-small" disabled={busy} onClick={() => onAct('reject')}>
         Keep
       </button>
+      {f.recommendation === 'DELETE' && (
+        <button className="btn btn-small btn-primary btn-approve" disabled={busy} onClick={() => onAct('approve')}>
+          Approve
+        </button>
+      )}
     </>
   )
 }
 
 function Details({ file: f }: { file: FileRecord }) {
+  const held = isOnHold(f)
   const findings = Object.entries(f.macieFindings ?? {}).filter(([, n]) => n > 0)
   return (
     <div className="details-grid">
       <div className="details-reason">
-        <h3>Why</h3>
+        <h3>Why this recommendation</h3>
         <p>{f.rationale ?? 'No explanation recorded yet.'}</p>
-        {f.citation && <p className="muted details-cite">Rule: {f.citation}</p>}
+        {f.citation && (
+          <p className="details-cite">
+            <span className="muted">Rule</span> {f.citation}
+          </p>
+        )}
       </div>
       <dl className="details-facts">
         {f.confidence != null && (
@@ -481,6 +617,18 @@ function Details({ file: f }: { file: FileRecord }) {
             <dd>{f.accountId}</dd>
           </>
         )}
+        {f.priority != null && (
+          <>
+            <dt>Exposure score</dt>
+            <dd className="num">{f.sensitivityScore ?? 0} (SSNs and IDs count 10, account numbers 8, birth dates 5, names 1)</dd>
+          </>
+        )}
+        {held && f.keepUntil && (
+          <>
+            <dt>Retention date</dt>
+            <dd className="num">{formatDate(f.keepUntil)}, superseded by the legal hold</dd>
+          </>
+        )}
         <dt>Sensitive data found</dt>
         <dd>
           {f.priority == null
@@ -494,7 +642,7 @@ function Details({ file: f }: { file: FileRecord }) {
         {f.sha256 && (
           <>
             <dt>SHA-256</dt>
-            <dd className="details-hash">{f.sha256}</dd>
+            <dd className="details-hash num">{f.sha256}</dd>
           </>
         )}
       </dl>

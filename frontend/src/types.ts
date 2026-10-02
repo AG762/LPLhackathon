@@ -15,6 +15,7 @@ export type DocType =
   | 'DUPLICATE'
   | 'PERSONAL'
   | 'ID_DOCUMENT'
+  | 'EXPIRED_PII'
   | 'UNKNOWN'
 
 export interface FileRecord {
@@ -48,6 +49,12 @@ export interface UploadUrlResponse {
   fileId: string
   key?: string
   url: string
+}
+
+// POST /files/bulk-approve: each id is approved or reported back with the guard that blocked it.
+export interface BulkApproveResult {
+  approved: FileRecord[]
+  blocked: { fileId: string; status: number; error: string }[]
 }
 
 export type ScanState = 'IDLE' | 'RUNNING' | 'COMPLETE' | 'FAILED'

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
+import { Sign } from '../components/Sign'
 import { formatBytes, isOnHold } from '../lib/format'
 import { computeMetrics, isRemoved } from '../lib/metrics'
 import { useFiles } from '../state/files'
@@ -24,7 +25,7 @@ function breakdown(files: FileRecord[]): Segment[] {
     { key: 'hold', label: 'On legal hold', count: files.filter(isOnHold).length },
     {
       key: 'retain',
-      label: 'Kept as records',
+      label: 'Retained as records',
       count: files.filter(
         (f) => !isOnHold(f) && (f.status === 'LOCKED' || f.status === 'REJECTED' || (f.status === 'PENDING' && f.recommendation === 'RETAIN')),
       ).length,
@@ -74,11 +75,11 @@ export default function DashboardPage() {
       </header>
 
       {fallbackReason && (
-        <div className="notice">
+        <Sign level="notice" compact className="dash-notice">
           {fallbackReason === 'not-built'
             ? "The dashboard endpoint isn't built on the backend yet, so these numbers are worked out from your file list."
             : `Couldn't load dashboard numbers (${fallbackReason}). Showing figures from your file list instead.`}
-        </div>
+        </Sign>
       )}
 
       {m.totalFiles === 0 ? (
@@ -91,7 +92,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <section className="dash-lead panel">
+          <section className="dash-lead">
             {m.storageReclaimedBytes > 0 ? (
               <p className="dash-sentence">
                 You've cleared <strong className="num">{formatBytes(m.storageReclaimedBytes)}</strong> and removed{' '}
@@ -103,18 +104,19 @@ export default function DashboardPage() {
                 ready to delete.
               </p>
             )}
-            <div className="dash-guarantee">
-              <span className={`guarantee-mark ${m.heldFilesDeleted === 0 ? 'ok' : 'bad'}`} aria-hidden="true">
-                {m.heldFilesDeleted === 0 ? '✓' : '!'}
-              </span>
-              <div>
-                <strong className="num">{m.heldFilesDeleted}</strong> protected files deleted.
-                <span className="muted"> Files under a legal hold or still in retention can't be approved.</span>
-              </div>
-            </div>
+            {m.heldFilesDeleted === 0 ? (
+              <Sign level="safe" word="NO PROTECTED FILES DELETED" className="dash-guarantee">
+                Files under a legal hold or still inside their retention period can't be approved, so none have been
+                deleted.
+              </Sign>
+            ) : (
+              <Sign level="danger" word={`${m.heldFilesDeleted} PROTECTED FILES DELETED`} className="dash-guarantee">
+                Files under a legal hold or still within retention were deleted. Escalate to Compliance.
+              </Sign>
+            )}
           </section>
 
-          <section className="panel dash-breakdown" aria-labelledby="breakdown-title">
+          <section className="dash-breakdown" aria-labelledby="breakdown-title">
             <h2 id="breakdown-title">Where your {m.totalFiles} files stand</h2>
             <div className="stack" role="img" aria-label={segments.map((s) => `${s.label}: ${s.count}`).join(', ')}>
               {segments
@@ -135,35 +137,38 @@ export default function DashboardPage() {
             </ul>
           </section>
 
-          <section className="dash-figures">
-            <Figure label="Storage reclaimed" value={formatBytes(m.storageReclaimedBytes)} note={`${pct(m.storageReclaimedPct)} of everything uploaded`} />
-            <Figure label="Personal data removed" value={String(m.piiItemsRemoved)} note="SSNs, account numbers, birth dates and other items found by the scan" />
-            <Figure
-              label="High-risk files waiting"
-              value={scanned ? String(m.highPriorityBacklog) : '—'}
-              note={
-                !scanned
-                  ? 'Run the sensitive-data scan from the review queue to find these.'
-                  : m.highPriorityBacklog
-                    ? 'Past retention and full of sensitive data. Review these first.'
-                    : 'None left to review.'
-              }
-              tone={scanned && m.highPriorityBacklog ? 'alert' : undefined}
-              link={!scanned || m.highPriorityBacklog ? { to: '/', text: 'Open the review queue' } : undefined}
-            />
-            <Figure label="Kept longer than required" value={pct(m.overRetainedPct)} note="Share of your files that were past their retention date when found" />
-            <Figure
-              label="Decided automatically"
-              value={`${m.autoCleared} of ${m.autoCleared + m.neededReview}`}
-              note={`${m.neededReview} needed a person to look at them`}
-            />
-            <Figure
-              label="Audit trail"
-              value={chainKnown ? (m.chainOk ? 'Intact' : 'Broken') : 'Not checked'}
-              note={chainKnown ? (m.chainOk ? 'Every entry matches its hash' : 'An entry was changed after it was written') : 'Check it on the audit log page'}
-              tone={chainKnown && !m.chainOk ? 'alert' : undefined}
-              link={{ to: '/audit', text: 'View the audit log' }}
-            />
+          <section className="dash-measures" aria-labelledby="measures-title">
+            <h2 id="measures-title">Measures</h2>
+            <dl>
+              <Measure label="Storage reclaimed" value={formatBytes(m.storageReclaimedBytes)} note={`${pct(m.storageReclaimedPct)} of everything uploaded`} />
+              <Measure label="Personal data removed" value={String(m.piiItemsRemoved)} note="SSNs, account numbers, birth dates and other items found by the scan" />
+              <Measure
+                label="High-exposure files waiting"
+                value={scanned ? String(m.highPriorityBacklog) : '—'}
+                note={
+                  !scanned
+                    ? 'Run the sensitive-data scan from the review queue to find these.'
+                    : m.highPriorityBacklog
+                      ? 'Past retention and full of client data. Clear these first.'
+                      : 'None left to review.'
+                }
+                tone={undefined}
+                link={!scanned || m.highPriorityBacklog ? { to: '/', text: 'Open the review queue' } : undefined}
+              />
+              <Measure label="Kept longer than required" value={pct(m.overRetainedPct)} note="Share of your files that were past their retention date when found" />
+              <Measure
+                label="Decided automatically"
+                value={`${m.autoCleared} of ${m.autoCleared + m.neededReview}`}
+                note={`${m.neededReview} needed a person to look at them`}
+              />
+              <Measure
+                label="Audit trail"
+                value={chainKnown ? (m.chainOk ? 'Verified' : 'Failed') : 'Not checked'}
+                note={chainKnown ? (m.chainOk ? 'Integrity check passed' : 'Integrity check failed: an entry was changed after it was written') : 'Run the integrity check on the audit log page'}
+                tone={chainKnown && !m.chainOk ? 'danger' : undefined}
+                link={{ to: '/audit', text: 'View the audit log' }}
+              />
+            </dl>
           </section>
         </>
       )}
@@ -171,7 +176,7 @@ export default function DashboardPage() {
   )
 }
 
-function Figure({
+function Measure({
   label,
   value,
   note,
@@ -181,19 +186,22 @@ function Figure({
   label: string
   value: string
   note: string
-  tone?: 'alert'
+  tone?: 'warning' | 'danger'
   link?: { to: string; text: string }
 }) {
   return (
-    <div className={`figure ${tone === 'alert' ? 'figure-alert' : ''}`}>
-      <div className="figure-label">{label}</div>
-      <div className="figure-value num">{value}</div>
-      <p className="figure-note muted">{note}</p>
-      {link && (
-        <Link className="figure-link" to={link.to}>
-          {link.text}
-        </Link>
-      )}
+    <div className={`measure ${tone ? `measure-${tone}` : ''}`}>
+      <dt>{label}</dt>
+      <dd className="measure-value num">{value}</dd>
+      <dd className="measure-note">
+        {note}
+        {link && (
+          <>
+            {' '}
+            <Link to={link.to}>{link.text}</Link>
+          </>
+        )}
+      </dd>
     </div>
   )
 }

@@ -5,28 +5,29 @@
   text-align: center;
   gap: 6px;
   padding: 48px 24px;
-  border: 2px dashed var(--rule-strong);
-  border-radius: var(--radius-m);
-  background: var(--surface);
+  border: 3px dashed var(--ink);
+
+  background: var(--ground);
   transition: border-color 0.15s, background-color 0.15s;
 }
 
 .dropzone-over {
-  border-color: var(--action);
-  background: color-mix(in srgb, var(--action) 6%, var(--surface));
+  border-color: var(--ink);
+  background: rgb(255 209 0 / 0.14);
+  border-style: solid;
 }
 
 .dropzone-icon {
   width: 48px;
   height: 48px;
-  color: var(--steel);
+  color: var(--ink-2);
   margin-bottom: 6px;
 }
 
 .dropzone-title {
-  font-family: var(--font-display);
-  font-weight: 650;
-  font-size: 1.15rem;
+  font-family: var(--font-sign);
+  font-weight: 800;
+  font-size: 1.6rem;
 }
 
 .dropzone-actions {
@@ -51,7 +52,7 @@
 }
 
 .upload-failed-count {
-  color: var(--hold);
+  color: var(--danger);
   font-weight: 600;
 }
 
@@ -90,25 +91,24 @@
 
 .upload-bar {
   height: 6px;
-  background: var(--surface-sunk);
-  border-radius: 3px;
+  background: var(--layer);
   overflow: hidden;
 }
 
 .upload-bar > span {
   display: block;
   height: 100%;
-  background: var(--action);
+  background: var(--ink);
   transform-origin: left;
   transition: transform 0.15s linear;
 }
 
 .upload-done .upload-bar > span {
-  background: var(--verified);
+  background: var(--safe);
 }
 
 .upload-failed .upload-bar > span {
-  background: var(--hold);
+  background: var(--danger);
 }
 
 .upload-state {
@@ -117,16 +117,16 @@
 }
 
 .upload-done .upload-state {
-  color: var(--verified);
+  color: var(--safe);
 }
 
 .upload-failed .upload-state {
-  color: var(--hold);
+  color: var(--danger);
 }
 
 .upload-error {
   grid-column: 1 / -1;
-  color: var(--hold);
+  color: var(--danger);
   font-size: 0.82rem;
 }
 

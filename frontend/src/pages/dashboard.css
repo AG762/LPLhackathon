@@ -1,89 +1,69 @@
+.dash-notice {
+  margin-bottom: 24px;
+}
+
 .dash-lead {
-  padding: 28px 28px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .dash-sentence {
-  font-family: var(--font-display);
-  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
-  font-weight: 500;
-  line-height: 1.3;
-  max-width: 34ch;
+  font-family: var(--font-sign);
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.15;
+  max-width: 24ch;
+  text-wrap: balance;
 }
 
 .dash-sentence strong {
-  font-weight: 750;
-  font-stretch: 110%;
+  font-weight: 800;
 }
 
 .dash-guarantee {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding-top: 16px;
-  border-top: 1px solid var(--rule);
-  font-size: 0.95rem;
-}
-
-.guarantee-mark {
-  flex: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  font-size: 0.85rem;
-  color: #fff;
-}
-
-.guarantee-mark.ok {
-  background: var(--verified);
-}
-
-.guarantee-mark.bad {
-  background: var(--hold);
+  max-width: none;
 }
 
 /* ---------- breakdown ---------- */
 
 .dash-breakdown {
-  margin-top: 16px;
-  padding: 20px 28px 24px;
+  padding: 28px 0 32px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .stack {
   display: flex;
   gap: 3px;
-  height: 22px;
+  height: 28px;
   margin: 16px 0 14px;
 }
 
 .stack-seg {
   min-width: 4px;
-  border-radius: 3px;
 }
 
 .seg-removed {
-  background: var(--verified);
+  background: var(--safe);
 }
 
 .seg-delete {
-  background: var(--action);
+  background: var(--primary);
 }
 
 .seg-review {
-  background: var(--amber);
+  background: var(--notice);
 }
 
 .seg-hold {
-  background: var(--hold);
+  background: var(--danger);
 }
 
 .seg-retain {
-  background: var(--rule-strong);
+  background: repeating-linear-gradient(135deg, #9aa0a8 0 2px, var(--layer) 2px 6px);
 }
 
 .legend {
@@ -93,7 +73,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 28px;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
 }
 
 .legend li {
@@ -103,62 +83,75 @@
 }
 
 .legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
+  width: 12px;
+  height: 12px;
 }
 
 .legend-count {
   font-weight: 700;
 }
 
-/* ---------- figures ---------- */
+/* ---------- measures ---------- */
 
-.dash-figures {
-  margin-top: 16px;
+.dash-measures {
+  padding-top: 28px;
+}
+
+.dash-measures dl {
+  margin: 14px 0 0;
+  border-top: 2px solid var(--ink);
+}
+
+.measure {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-m);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.figure {
-  padding: 20px 24px 22px;
-  border-right: 1px solid var(--rule);
+  grid-template-columns: minmax(180px, 260px) 140px minmax(0, 1fr);
+  gap: 20px;
+  align-items: baseline;
+  padding: 14px 0;
   border-bottom: 1px solid var(--rule);
-  margin: 0 -1px -1px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
-.figure-label {
-  font-size: 0.88rem;
+.measure dt {
   font-weight: 600;
-  color: var(--steel);
 }
 
-.figure-value {
-  font-size: 1.9rem;
-  font-weight: 700;
-  font-stretch: 108%;
-  line-height: 1.1;
+.measure dd {
+  margin: 0;
 }
 
-.figure-alert .figure-value {
-  color: var(--hold);
+.measure-value {
+  font-family: var(--font-sign);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.figure-note {
-  font-size: 0.85rem;
-  max-width: 34ch;
+.measure-note {
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  max-width: 60ch;
 }
 
-.figure-link {
-  margin-top: auto;
-  padding-top: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
+.measure-warning .measure-value {
+  color: #b5520c;
+}
+
+.measure-danger .measure-value {
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .dash-lead {
+    grid-template-columns: 1fr;
+  }
+  .dash-sentence {
+    font-size: 1.85rem;
+  }
+  .measure {
+    grid-template-columns: 1fr auto;
+    gap: 4px 16px;
+  }
+  .measure-note {
+    grid-column: 1 / -1;
+  }
 }

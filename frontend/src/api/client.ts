@@ -1,5 +1,6 @@
 import type {
   AuditEntry,
+  BulkApproveResult,
   DashboardMetrics,
   FileRecord,
   FileStatus,
@@ -20,7 +21,7 @@ export interface Api {
   approve(id: string): Promise<FileRecord>
   reject(id: string): Promise<FileRecord>
   restore(id: string): Promise<FileRecord>
-  bulkApprove(ids: string[]): Promise<FileRecord[]>
+  bulkApprove(ids: string[]): Promise<BulkApproveResult>
   startScan(): Promise<{ jobId: string }>
   scanStatus(): Promise<ScanStatus>
   ingestScan(): Promise<{ updated: number }>

@@ -3,7 +3,7 @@
 // and a real SHA-256 hash chain, so the tamper demo can be rehearsed.
 import type { Api } from './client'
 import { ApiError } from './errors'
-import type { AuditEntry, DashboardMetrics, FileRecord, Priority, Recommendation } from '../types'
+import type { AuditEntry, BulkApproveResult, DashboardMetrics, FileRecord, Priority, Recommendation } from '../types'
 import { DEMO_ADVISOR } from '../lib/format'
 import { computeMetrics } from '../lib/metrics'
 
@@ -372,16 +372,19 @@ export const mockApi: Api = {
     return clone(f)
   },
 
-  async bulkApprove(ids) {
+  // Same shape as the real route: approve what passes the guards, report the rest.
+  async bulkApprove(ids): Promise<BulkApproveResult> {
     await ready
     await latency()
-    const blocked = ids.map((id) => [id, approvalBlocker(mustGet(id))] as const).filter(([, b]) => b)
-    if (blocked.length) {
-      throw new ApiError(409, `${blocked.length} of the selected files can't be deleted: ${blocked[0][1]}`)
+    const result: BulkApproveResult = { approved: [], blocked: [] }
+    for (const id of new Set(ids)) {
+      try {
+        result.approved.push(await approveOne(id))
+      } catch (e) {
+        result.blocked.push({ fileId: id, status: e instanceof ApiError ? e.status : 500, error: e instanceof Error ? e.message : String(e) })
+      }
     }
-    const out: FileRecord[] = []
-    for (const id of ids) out.push(await approveOne(id))
-    return out
+    return result
   },
 
   async startScan() {

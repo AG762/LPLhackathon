@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { api, mode } from '../api/client'
+import { Sign } from '../components/Sign'
 import { fileName, formatDateTime, shortHash } from '../lib/format'
 import { useFiles } from '../state/files'
 import { useToast } from '../state/toast'
@@ -60,7 +62,7 @@ export default function AuditPage() {
 
   async function recheck() {
     const v = await load()
-    if (v) toast(v.ok ? 'Chain verified. Every entry matches its hash.' : `Chain broken at entry ${v.brokenAtSeq}.`, v.ok ? 'ok' : 'error')
+    if (v) toast(v.ok ? 'Integrity check passed.' : `Integrity check failed at entry ${v.brokenAtSeq}.`, v.ok ? 'ok' : 'error')
   }
 
   async function tamper() {
@@ -99,44 +101,70 @@ export default function AuditPage() {
         <div>
           <h1>Audit log</h1>
           <p>
-            Every decision is written here and sealed with a hash of the entry before it. If anyone edits a past entry,
-            the chain breaks at that point.
+            Every action on your files is recorded here, and each entry includes a hash of the one before it. If a past
+            entry is edited, the integrity check fails at that entry.
           </p>
         </div>
         <div className="audit-actions">
           <button className="btn" onClick={recheck} disabled={checking}>
-            {checking ? 'Checking…' : 'Verify chain'}
+            {checking ? 'Checking…' : 'Run integrity check'}
           </button>
-          <button className="btn btn-primary" onClick={downloadCertificate} disabled={downloading}>
+          <button
+            className="btn btn-primary"
+            onClick={downloadCertificate}
+            disabled={downloading || verify?.ok === false}
+            aria-describedby={verify?.ok === false ? 'cert-blocked' : undefined}
+          >
             {downloading ? 'Preparing…' : 'Download certificate of disposal'}
           </button>
+          {verify?.ok === false && (
+            <span id="cert-blocked" className="cert-blocked">
+              Unavailable until the integrity check passes. Resolve with Compliance first.
+            </span>
+          )}
         </div>
       </header>
 
-      {error && <div className="notice error">{error}</div>}
-
-      {verify && entries && (
-        <div className={`seal ${verify.ok ? 'seal-ok' : 'seal-broken'}`} role="status">
-          <ChainGlyph ok={verify.ok} />
-          <div>
-            <div className="seal-title">{verify.ok ? 'Chain intact' : `Chain broken at entry ${broken}`}</div>
-            <div className="seal-sub">
-              {verify.ok
-                ? `All ${entries.length} entries match their hashes. Head ${shortHash(entries[entries.length - 1]?.entryHash)}`
-                : 'This entry was changed after it was written. Every entry after it can no longer be trusted.'}
-            </div>
-          </div>
-        </div>
+      {error && (
+        <Sign level="warning" compact className="audit-sign">
+          {error}
+        </Sign>
       )}
+
+      <AnimatePresence mode="wait" initial={false}>
+        {verify && entries && (
+          <motion.div
+            key={verify.ok ? 'ok' : 'broken'}
+            className="audit-seal"
+            initial={{ clipPath: 'inset(0 0 100% 0)' }}
+            animate={{ clipPath: 'inset(0 0 0% 0)' }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            role="status"
+          >
+            {verify.ok ? (
+              <Sign level="safe" word="INTEGRITY CHECK PASSED">
+                All <strong className="num">{entries.length}</strong> entries match their recorded hashes. Latest hash{' '}
+                <span className="num">{shortHash(entries[entries.length - 1]?.entryHash)}</span>.
+              </Sign>
+            ) : (
+              <Sign level="danger" word="INTEGRITY CHECK FAILED">
+                <strong>Entry {broken} doesn't match its recorded hash</strong>, so it was changed after it was written.
+                Entries after it can't be relied on. Escalate to Compliance before using this log as exam evidence.
+              </Sign>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {mode === 'mock' && api.tamper && (
         <div className="rehearsal">
-          <span className="muted">Rehearsal controls for the demo:</span>
+          <span className="muted">Demo only:</span>
           <button className="btn btn-small" onClick={tamper} disabled={!verify?.ok}>
-            Edit an entry behind the system's back
+            Simulate tampering
           </button>
           <button className="btn btn-small btn-quiet" onClick={repair} disabled={verify?.ok}>
-            Undo the edit
+            Restore original entry
           </button>
         </div>
       )}
@@ -151,8 +179,10 @@ export default function AuditPage() {
             const state = broken == null ? 'ok' : e.seq < broken ? 'ok' : e.seq === broken ? 'broken' : 'untrusted'
             return (
               <li key={e.seq} ref={e.seq === broken ? brokenRef : undefined} className={`link link-${state}`}>
-                {i > 0 && <span className="link-joint" aria-hidden="true" />}
-                <div className="link-seq num">{e.seq}</div>
+                <div className="link-rail" aria-hidden="true">
+                  {i > 0 && <span className="link-joint" />}
+                  <span className="link-node num">{e.seq}</span>
+                </div>
                 <div className="link-body">
                   <div className="link-top">
                     <span className="link-action">{ACTION_LABELS[e.action] ?? e.action}</span>
@@ -163,7 +193,14 @@ export default function AuditPage() {
                     {e.ruleApplied && `, rule ${e.ruleApplied}`}
                   </div>
                   {state === 'broken' && (
-                    <div className="link-alarm">This entry's contents no longer match the hash it was sealed with.</div>
+                    <motion.div
+                      className="link-alarm"
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      Doesn't match its recorded hash.
+                    </motion.div>
                   )}
                 </div>
                 <div className="link-hashes" title={`Entry hash ${e.entryHash}\nPrevious hash ${e.prevHash}`}>
@@ -176,19 +213,5 @@ export default function AuditPage() {
         </ol>
       )}
     </>
-  )
-}
-
-function ChainGlyph({ ok }: { ok: boolean }) {
-  return (
-    <svg className="seal-glyph" viewBox="0 0 40 24" aria-hidden="true">
-      <rect x="2" y="6" width="16" height="12" rx="6" fill="none" stroke="currentColor" strokeWidth="2.6" />
-      {ok ? (
-        <rect x="22" y="6" width="16" height="12" rx="6" fill="none" stroke="currentColor" strokeWidth="2.6" />
-      ) : (
-        <path d="M26 6h6a6 6 0 0 1 0 12h-6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-      )}
-      {ok && <line x1="14" y1="12" x2="26" y2="12" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />}
-    </svg>
   )
 }

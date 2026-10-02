@@ -12,6 +12,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   DUPLICATE: 'Duplicate copy',
   PERSONAL: 'Personal',
   ID_DOCUMENT: 'ID / SSN scan',
+  EXPIRED_PII: 'Expired personal data',
   UNKNOWN: 'Unclassified',
 }
 
