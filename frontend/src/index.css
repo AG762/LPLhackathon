@@ -1,7 +1,7 @@
 /* ShredSafe: Safety Sign Standard.
    Hazards are posted the way safety signs post them (ANSI Z535 signal words), and only where a file
-   truly can't be deleted. Exposure (how much client data a file holds) uses warm chips without the
-   hazard symbol. The shell is navy, close to the advisor portal it lives in. */
+   truly can't be deleted. Exposure (how much client data a file holds) is a navy meter, never a
+   hazard colour. The shell is navy, close to the advisor portal it lives in. */
 
 :root {
   /* neutrals */
