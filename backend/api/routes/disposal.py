@@ -168,3 +168,61 @@ def restore(req):
                           restoredBy=DEMO_ADVISOR, restoredAt=_now().isoformat())
     audit_log.append(DEMO_ADVISOR, "RESTORED", updated, file.get("ruleApplied"), detail=f"{src} -> {dest}")
     return 200, updated
+
+
+# ---------- D.4 purge ----------
+
+def _delete_all_versions(file_id):
+    """Permanent delete: every version and delete marker the file left under any prefix.
+
+    The bucket is versioned (Object Lock requires it), so a plain delete only hides the object.
+    """
+    s3 = aws.s3()
+    for prefix in ("uploads", "quarantine", "restored"):
+        pages = s3.get_paginator("list_object_versions").paginate(Bucket=aws.bucket(), Prefix=f"{prefix}/{file_id}/")
+        doomed = [{"Key": v["Key"], "VersionId": v["VersionId"]}
+                  for page in pages for v in page.get("Versions", []) + page.get("DeleteMarkers", [])]
+        for i in range(0, len(doomed), 1000):
+            s3.delete_objects(Bucket=aws.bucket(), Delete={"Objects": doomed[i:i + 1000], "Quiet": True})
+
+
+def _grace_over(file):
+    purge_after = file.get("purgeAfter")
+    return not purge_after or str(purge_after) <= _now().isoformat()
+
+
+def _purge(file):
+    try:
+        _delete_all_versions(file["fileId"])
+    except ClientError:
+        logger.exception("Purge failed for %s", file["fileId"])
+        raise HttpError(502, "Could not delete the file from storage; it is still quarantined")
+    updated = _set_status(file["fileId"], "QUARANTINED", "PURGED", purgedAt=_now().isoformat())
+    audit_log.append("system:api", "PURGED", updated, file.get("ruleApplied"),
+                     detail="all stored versions permanently deleted")
+    return updated
+
+
+def purge(req):
+    """Purge one quarantined file. Before its grace period ends this is a demo-only "purge now"."""
+    file = load_file(req.params["file_id"])
+    if file.get("status") != "QUARANTINED":
+        raise HttpError(409, f"File is {file.get('status')}, only QUARANTINED files can be purged")
+    if not _grace_over(file) and os.environ.get("DEMO_CONTROLS") != "true":
+        raise HttpError(409, f"The grace period runs until {file.get('purgeAfter')}; the file can still be restored")
+    return 200, _purge(file)
+
+
+def purge_expired(req):
+    """Mark every quarantined file whose grace period has ended as PURGED (the bucket lifecycle
+    may already have removed the object; this keeps the Files table and audit log in step)."""
+    table = aws.table("FILES_TABLE")
+    items, kwargs = [], {}
+    while True:
+        page = table.scan(**kwargs)
+        items.extend(page.get("Items", []))
+        if "LastEvaluatedKey" not in page:
+            break
+        kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+    due = sorted((f for f in items if f.get("status") == "QUARANTINED" and _grace_over(f)), key=lambda f: f["fileId"])
+    return 200, {"purged": [_purge(f)["fileId"] for f in due]}

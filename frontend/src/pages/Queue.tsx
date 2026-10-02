@@ -154,10 +154,12 @@ export default function QueuePage() {
     })
   }
 
-  async function act(f: FileRecord, action: 'approve' | 'reject' | 'restore') {
+  async function act(f: FileRecord, action: 'approve' | 'reject' | 'restore' | 'purge') {
     setBusy((b) => new Set(b).add(f.fileId))
     try {
-      const updated = await api[action](f.fileId)
+      const run = action === 'purge' ? api.purge : api[action]
+      if (!run) return
+      const updated = await run(f.fileId)
       upsert([updated])
       const name = fileName(f)
       toast(
@@ -165,7 +167,9 @@ export default function QueuePage() {
           ? `Approved. ${name} is in the grace period and can be restored until it's purged.`
           : action === 'reject'
             ? `Kept ${name}. It won't be deleted.`
-            : `Restored ${name} to the review queue.`,
+            : action === 'purge'
+              ? `Purged ${name}. Every stored copy is permanently deleted.`
+              : `Restored ${name} to the review queue.`,
       )
     } catch (e) {
       toast(e instanceof ApiError && e.status === 409 ? `Not deleted: ${e.message}` : errorMessage(e), 'error')
@@ -425,7 +429,7 @@ interface RowProps {
   onSeen: () => void
   onToggleSelect: () => void
   onToggleExpand: () => void
-  onAct: (action: 'approve' | 'reject' | 'restore') => void
+  onAct: (action: 'approve' | 'reject' | 'restore' | 'purge') => void
 }
 
 function Row({ ref, file: f, selected, expanded, busy, movedBy, fresh, onSeen, onToggleSelect, onToggleExpand, onAct }: RowProps) {
@@ -562,9 +566,21 @@ function RecommendationTag({ file: f }: { file: FileRecord }) {
 function RowActions({ file: f, busy, onAct }: { file: FileRecord; busy: boolean; onAct: RowProps['onAct'] }) {
   if (f.status === 'QUARANTINED') {
     return (
-      <button className="btn btn-small" disabled={busy} onClick={() => onAct('restore')}>
-        Restore
-      </button>
+      <>
+        <button className="btn btn-small" disabled={busy} onClick={() => onAct('restore')}>
+          Restore
+        </button>
+        {api.purge && (
+          <button
+            className="btn btn-small btn-quiet btn-purge"
+            disabled={busy}
+            onClick={() => onAct('purge')}
+            title="Demo only: skip the grace period and delete every stored copy now"
+          >
+            Purge now
+          </button>
+        )}
+      </>
     )
   }
   if (f.status !== 'PENDING') return null

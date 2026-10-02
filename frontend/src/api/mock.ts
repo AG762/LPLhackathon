@@ -373,6 +373,16 @@ export const mockApi: Api = {
   },
 
   // Same shape as the real route: approve what passes the guards, report the rest.
+  async purge(id) {
+    await ready
+    await latency()
+    const f = mustGet(id)
+    if (f.status !== 'QUARANTINED') throw new ApiError(409, `File is ${f.status}, only QUARANTINED files can be purged`)
+    f.status = 'PURGED'
+    await appendAudit({ actor: 'system:api', action: 'PURGED', fileId: id, fileHash: f.sha256, ruleApplied: f.ruleApplied })
+    return clone(f)
+  },
+
   async bulkApprove(ids): Promise<BulkApproveResult> {
     await ready
     await latency()

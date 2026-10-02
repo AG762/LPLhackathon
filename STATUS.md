@@ -75,7 +75,7 @@ _Last updated: 2026-10-02_
 
 | A.8 (part) | Demo reset script: empty the bucket (all versions) + tables, then re-seed | ✅ Done | `python scripts/reset_demo.py` (dry run) then `--yes`. Finds the bucket and tables from the `shredsafe` stack outputs; deletes all versions except `records/` (Object Lock); empties Files + AuditLog, keeps LegalHolds + RetentionRules. Runs `scripts/seed.py` afterwards if A.7 adds it there |
 
-| D.4 | Purge → `PURGED` + audit entry | 🟡 In progress | "Purge now" demo route + a sweep that marks files whose grace period ended |
+| D.4 | Purge → `PURGED` + audit entry | ✅ Done | `POST /files/{id}/purge` deletes every stored version (uploads/, quarantine/, restored/) and writes a `PURGED` audit entry; before the grace period ends it needs `DemoControls=true` ("Purge now" button in the queue). `POST /files/purge-expired` marks every file past its grace period |
 
 **Not yet verified live:** E and F are tested locally (backend tests + mock mode) but not against the deployed stack. Needs a redeploy with the E changes.
 

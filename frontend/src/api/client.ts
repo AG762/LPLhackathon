@@ -29,7 +29,8 @@ export interface Api {
   audit(): Promise<AuditEntry[]>
   verifyAudit(): Promise<VerifyResult>
   certificate(): Promise<Blob>
-  // Demo-only controls (E.3). Undefined when the backend doesn't expose them.
+  // Demo-only controls (E.3, D.4). Undefined when the backend doesn't expose them.
+  purge?(id: string): Promise<FileRecord>
   tamper?(): Promise<void>
   repair?(): Promise<void>
 }
@@ -115,6 +116,7 @@ const liveApi: Api = {
   approve: (id) => request('POST', `/files/${encodeURIComponent(id)}/approve`),
   reject: (id) => request('POST', `/files/${encodeURIComponent(id)}/reject`),
   restore: (id) => request('POST', `/files/${encodeURIComponent(id)}/restore`),
+  purge: (id) => request('POST', `/files/${encodeURIComponent(id)}/purge`),
   bulkApprove: (ids) => request('POST', '/files/bulk-approve', { ids }),
   startScan: () => request('POST', '/scan'),
   scanStatus: () => request('GET', '/scan/status'),
@@ -152,6 +154,7 @@ const liveDemoControls = import.meta.env.VITE_DEMO_CONTROLS === 'true'
 if (!liveDemoControls) {
   delete liveApi.tamper
   delete liveApi.repair
+  delete liveApi.purge
 }
 export const api: Api = mode === 'live' ? liveApi : mockApi
 export const apiBaseUrl = BASE_URL
