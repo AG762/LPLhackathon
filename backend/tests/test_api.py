@@ -1,47 +1,5 @@
-import json
-
-import boto3
-import pytest
-from moto import mock_aws
-
 import handler
-from routes import files
-
-BUCKET = "shredsafe-test"
-TABLE = "Files"
-
-
-def event(method, path, body=None, query=None):
-    return {
-        "rawPath": path,
-        "requestContext": {"http": {"method": method}},
-        "queryStringParameters": query,
-        "body": json.dumps(body) if body is not None else None,
-        "isBase64Encoded": False,
-    }
-
-
-def call(method, path, body=None, query=None):
-    res = handler.main(event(method, path, body, query), None)
-    return res["statusCode"], json.loads(res["body"])
-
-
-@pytest.fixture
-def aws(monkeypatch):
-    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    monkeypatch.setenv("BUCKET_NAME", BUCKET)
-    monkeypatch.setenv("FILES_TABLE", TABLE)
-    with mock_aws():
-        monkeypatch.setattr(files, "_s3", None)
-        monkeypatch.setattr(files, "_dynamodb", None)
-        boto3.client("s3").create_bucket(Bucket=BUCKET)
-        table = boto3.resource("dynamodb").create_table(
-            TableName=TABLE,
-            KeySchema=[{"AttributeName": "fileId", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "fileId", "AttributeType": "S"}],
-            BillingMode="PAY_PER_REQUEST",
-        )
-        yield table
+from conftest import BUCKET, call, event
 
 
 def test_unknown_path_is_404():
@@ -57,9 +15,8 @@ def test_bad_json_is_400():
     assert res["statusCode"] == 400
 
 
-def test_bulk_approve_not_captured_by_id_route():
-    status, body = call("POST", "/files/bulk-approve", {"ids": []})
-    assert status == 501 and "bulk-approve" in body["error"]
+def test_bulk_approve_not_captured_by_id_route(aws):
+    assert call("POST", "/files/bulk-approve", {"ids": []}) == (200, {"approved": [], "blocked": []})
 
 
 def test_upload_url_strips_directories(aws):
