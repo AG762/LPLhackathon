@@ -12,7 +12,7 @@ _Nobody owns these yet (as of 2026-10-02). Ordered by value to the demo. H is he
 
 | Task | Size | Where to start | Depends on / notes |
 |---|---|---|---|
-| **H: Pitch & demo** (H.1–H.5): slides, demo script with timings, backup video, judge Q&A sheet | Large | PLAN.md §1–3, §9 (demo script), §12 (risks), §14 (business model) | Can start now. Rehearsal + video need the live app working end to end |
+| **H: Pitch & demo** (H.1, H.3, H.4 still open; H.2 + H.5 taken by Aryan): award categories, demo script with timings, backup video | Large | PLAN.md §1–3, §9 (demo script), §12 (risks), §14 (business model) | Can start now. Rehearsal + video need the live app working end to end |
 | **End-to-end test in live mode**: upload `data/samples/`, check queue, approve/reject, audit page, certificate; file bugs to owners | Small, ongoing | `frontend/README.md`; switch the sidebar to Live | Needs your forwarded frontend URL in `FrontendOrigin` (ask Arihant to deploy) |
 
 Conventions: branch from `main`, open a PR, Arihant merges + deploys. Backend tests: `cd backend && python -m pytest -q`.
@@ -86,7 +86,7 @@ _Last updated: 2026-10-02_
 | G.2 | Macie-friendly high-PII demo files | ✅ Done | `python data/generate_pii.py` writes into `data/samples/`: `2016_Client_List_Export.csv` (50 SSNs + DOB, address, phone), `2018_W9_Forms_Batch.txt` (12 × `SSN: ###-##-####`), `2019_Account_Holder_Export.pdf` (20 account numbers + DOB, text PDF). Seeded, synthetic; expected counts in `EXPECTED_FINDINGS` for G.4. Leaves `data/generate.py` alone |
 | G.3 | Legal-hold scenario: one client + files tied to them, matching the seeded hold | ✅ Done | `python data/generate_legal_hold.py`: three Margaret Whitaker files in `data/samples/` (2019 email past retention = the "save", 2021 notes, 2023 statement), each with `Client: Margaret Whitaker`. **A.7:** seed `data/legal_hold.json` into LegalHolds (`CLIENT_NAME` scope, `HOLD-24-01187`). Tested against the real `holds.py` matcher and approve guard |
 | G.4 | Expected-results manifest (`data/expected.csv`) | ✅ Done | One row per file in `data/samples/` (11 now): `docType`, `recommendation`, `priority`, `legalHold`, `why`. A test fails if a sample is added without a row, and checks priorities against the generators. Use it to measure classifier accuracy (C.1) and as the demo checklist. **G.1:** add a row for each new file |
-| H.2 | Slide deck (follows the hackathon presentation rubric) | 🟡 In progress | Award categories still to be picked by the team; deck covers every rubric section so it fits any two |
+| H.2, H.5 | Slide deck + judge Q&A | 🟡 In progress | See the Pitch & demo (H) section |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
 
@@ -97,4 +97,13 @@ _Last updated: 2026-10-02_
 - `/dashboard` shape the frontend expects: `DashboardMetrics` in `frontend/src/types.ts`.
 
 ## Pitch & demo (H)
-_Unclaimed._
+_Last updated: 2026-10-02. Rubric: 2026 LPL Financial University Hackathon Team Presentation Rubric. Judges score only what we show working; every team is also judged on Best Use of AWS._
+
+| ID | Task | Owner | Status | Notes |
+|---|---|---|---|---|
+| H.1 | Open questions: **pick our two award categories**, final name, presentation length | Team | ⬜ Not started | Categories: Startup We'd Buy Tomorrow · Biggest Business Impact · Best Customer Experience · Best Technical Execution (pick two). Length unknown; deck is built for 5 min + backup slides |
+| H.2 | Slide deck | Aryan | 🟡 In progress | Covers every rubric section (problem + research, user, solution, features built, demo, value, impact, tech + AWS, close). Real sources: IBM 2025, Veritas Databerg, SEC Reg S-P, LPL Q2 2026 8-K. Category tie-back slide added once H.1 is decided |
+| H.3 | Demo script with timings, two dry runs | Unclaimed | ⬜ Not started | Draft script is in the deck's speaker notes. Needs the live app working end to end (redeploy + process handler fix) |
+| H.4 | Recorded backup demo video | Unclaimed | ⬜ Not started | Rubric strongly recommends a recorded demo. Record after H.3 |
+| H.5 | Judge Q&A cheat sheet | Aryan | 🟡 In progress | Backup Q&A slide in the deck (S3 lifecycle?, AI misclassification, held files, log tampering, data handling) |
+
