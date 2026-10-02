@@ -4,7 +4,7 @@ file,docType,recommendation,priority,legalHold,why
 2018_W9_Forms_Batch.txt,EXPIRED_PII,DELETE,HIGH,no,"PLAN.md's 12-SSN file: 2018 W-9 batch past retention, delete first (score 144)"
 2019_Account_Holder_Export.pdf,EXPIRED_PII,DELETE,HIGH,no,Closed accounts from 2019 with 20 account numbers and birth dates; past the 6 years after closing (score 280)
 2019_Email_Whitaker_Rebalance.eml,CLIENT_COMMUNICATION,RETAIN,LOW,yes,"The 'save': past its 3-year window and looks deletable, but Margaret Whitaker is under legal hold HOLD-24-01187"
-2020_Client_Communication_Smith.txt,CLIENT_COMMUNICATION,DELETE,LOW,no,2020 client email; the 3-year retention under SEC 17a-4(b)(4) ended in 2023
+2020_Client_Communication_Smith.txt,CLIENT_COMMUNICATION,RETAIN,LOW,yes,"Past its 3-year window and looks deletable, but Arthur Smith is under legal hold H-DEMO-1 (options allocation dispute)"
 2021_Meeting_Notes_Whitaker.txt,CLIENT_COMMUNICATION,RETAIN,LOW,yes,Notes about the held client's account; the legal hold overrides retention
 2023_Statement_Whitaker_Sept.txt,ACCOUNT_STATEMENT,RETAIN,LOW,yes,Within its 6-year retention and also under the legal hold
 2024_Trade_Confirm_AAPL.txt,TRADE_CONFIRMATION,RETAIN,LOW,no,2024 trade confirmation within its 6-year retention (SEC 17a-4 / FINRA 4511)
