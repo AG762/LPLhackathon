@@ -8,3 +8,6 @@ __pycache__/
 .impeccable/mocks/
 .impeccable/config.local.json
 ShredSafe-frontend.pdf
+
+# SAM build output (sam build)
+.aws-sam/
