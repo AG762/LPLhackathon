@@ -1,6 +1,6 @@
 import json
 import boto3
-from backend.process.prompt import SYSTEM_PROMPT
+from prompt import SYSTEM_PROMPT
 
 bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
 

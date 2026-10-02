@@ -1,9 +1,10 @@
 import json
 import os
 import hashlib
+from urllib.parse import unquote_plus
 from datetime import datetime, timezone
 import boto3
-from backend.process.classify import classify_text
+from classify import classify_text
 
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 s3 = boto3.client("s3", region_name=AWS_REGION)
@@ -22,7 +23,7 @@ def process_file_event(event, context):
 
     for record in event.get("Records", []):
         bucket_name = record["s3"]["bucket"]["name"]
-        object_key = record["s3"]["object"]["key"]
+        object_key = unquote_plus(record["s3"]["object"]["key"])  # S3 events URL-encode keys
         
         # 1. Fetch file from S3
         resp = s3.get_object(Bucket=bucket_name, Key=object_key)
@@ -37,7 +38,9 @@ def process_file_event(event, context):
         classification = classify_text(text_content)
         
         # 3. Derive file ID and metadata
-        file_id = os.path.basename(object_key)
+        # Keys are uploads/<fileId>/<filename> (see api /upload-url); fall back to the filename
+        parts = object_key.split("/")
+        file_id = parts[1] if len(parts) == 3 and parts[0] == "uploads" else os.path.basename(object_key)
         uploaded_at = datetime.now(timezone.utc).isoformat()
         
         # 4. Fallback decision logic (Track B contract)

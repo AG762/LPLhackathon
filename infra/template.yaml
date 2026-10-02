@@ -96,7 +96,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../backend/process
-      Handler: handler.main
+      Handler: handler.process_file_event
       Timeout: 120 # Bedrock reading a multi-page PDF can take a while
       Environment:
         Variables:
