@@ -73,7 +73,7 @@ _Last updated: 2026-10-02_
 | F.7 | Dashboard | ✅ Done | Falls back to computing from `/files` until D.6 lands; reference calc in `frontend/src/lib/metrics.ts` |
 | F.8 | Audit log view, integrity badge, certificate download | ✅ Done | Certificate button disabled while the check fails |
 
-| D.3 | Restore from quarantine during the grace period | 🟡 In progress | Claimed from the unclaimed list. `process` must skip a `fileId` that already has a row, or restoring re-classifies the file |
+| D.3 | Restore from quarantine during the grace period | ✅ Done | `POST /files/{id}/restore`. Moves the object to `restored/<id>/<name>` (outside the `uploads/` trigger, so no re-classification), status back to `PENDING`, `RESTORED` audit entry; 409 if not quarantined or the grace period has ended. Approve accepts `restored/` keys. Live check waits on the process handler fix (new uploads aren't classified on `main`) |
 
 **Not yet verified live:** E and F are tested locally (backend tests + mock mode) but not against the deployed stack. Needs a redeploy with the E changes.
 

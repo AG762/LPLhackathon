@@ -367,7 +367,7 @@ export const mockApi: Api = {
     const f = mustGet(id)
     if (f.status !== 'QUARANTINED') throw new ApiError(409, 'Only files in the grace period can be restored.')
     f.status = 'PENDING'
-    f.s3Key = f.s3Key.replace(/^quarantine\//, 'uploads/')
+    f.s3Key = f.s3Key.replace(/^quarantine\//, 'restored/') // matches the API: restored/ never re-triggers classification
     await appendAudit({ actor: DEMO_ADVISOR.id, action: 'RESTORED', fileId: id, fileHash: f.sha256, ruleApplied: f.ruleApplied })
     return clone(f)
   },

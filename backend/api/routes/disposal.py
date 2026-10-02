@@ -68,9 +68,23 @@ def _set_status(file_id, expected, new, **fields):
         raise
 
 
+def _moved_key(key, prefix):
+    """uploads/<id>/<name> or restored/<id>/<name> -> <prefix>/<id>/<name>"""
+    for source in ("uploads/", "restored/", "quarantine/"):
+        if key.startswith(source):
+            key = key[len(source):]
+            break
+    return f"{prefix}/{key}"
+
+
 def _quarantine_key(key):
-    rest = key[len("uploads/"):] if key.startswith("uploads/") else key
-    return f"quarantine/{rest}"
+    return _moved_key(key, "quarantine")
+
+
+def _move_object(src, dest):
+    s3 = aws.s3()
+    s3.copy_object(Bucket=aws.bucket(), Key=dest, CopySource={"Bucket": aws.bucket(), "Key": src})
+    s3.delete_object(Bucket=aws.bucket(), Key=src)
 
 
 def _approve(file_id):
@@ -131,5 +145,26 @@ def bulk_approve(req):
 
 
 def restore(req):
-    # TODO D.3: move quarantine/ -> uploads/ (note: that re-triggers `process`), audit entry
-    raise HttpError(501, "restore not implemented")
+    """Undo an approval during the grace period (D.3).
+
+    The object goes to restored/, not back to uploads/: the process Lambda's S3 trigger only
+    watches uploads/, so restoring never re-classifies the file. Approve accepts restored/ keys.
+    """
+    file = load_file(req.params["file_id"])
+    if file.get("status") != "QUARANTINED":
+        raise HttpError(409, f"File is {file.get('status')}, only QUARANTINED files can be restored")
+    purge_after = file.get("purgeAfter")
+    if purge_after and str(purge_after) <= _now().isoformat():
+        raise HttpError(409, f"The grace period ended at {purge_after}, so the file can't be restored")
+
+    src, dest = file["s3Key"], _moved_key(file["s3Key"], "restored")
+    try:
+        _move_object(src, dest)
+    except ClientError:
+        logger.exception("Restore move failed for %s", file["fileId"])
+        raise HttpError(502, "Could not move the file out of quarantine; it is still in the grace period")
+
+    updated = _set_status(file["fileId"], "QUARANTINED", "PENDING", s3Key=dest,
+                          restoredBy=DEMO_ADVISOR, restoredAt=_now().isoformat())
+    audit_log.append(DEMO_ADVISOR, "RESTORED", updated, file.get("ruleApplied"), detail=f"{src} -> {dest}")
+    return 200, updated
