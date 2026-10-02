@@ -13,7 +13,6 @@ _Nobody owns these yet (as of 2026-10-02). Ordered by value to the demo. H is he
 | Task | Size | Where to start | Depends on / notes |
 |---|---|---|---|
 | **H: Pitch & demo** (H.1, H.3, H.4 still open; H.2 + H.5 taken by Aryan): award categories, demo script with timings, backup video | Large | PLAN.md §1–3, §9 (demo script), §12 (risks), §14 (business model) | Can start now. Rehearsal + video need the live app working end to end |
-| **End-to-end test in live mode**: upload `data/samples/`, check queue, approve/reject, audit page, certificate; file bugs to owners | Small, ongoing | `frontend/README.md`; switch the sidebar to Live | Needs your forwarded frontend URL in `FrontendOrigin` (ask Arihant to deploy) |
 
 Conventions: branch from `main`, open a PR, Arihant merges + deploys. Backend tests: `cd backend && python -m pytest -q`.
 Stretch items (PLAN.md §5: near-duplicate detection, NL policy authoring, compliance-officer view, ask-the-auditor chat) only after the demo works end to end.
@@ -88,6 +87,7 @@ _Last updated: 2026-10-02_
 | G.3 | Legal-hold scenario: one client + files tied to them, matching the seeded hold | ✅ Done | `python data/generate_legal_hold.py`: three Margaret Whitaker files in `data/samples/` (2019 email past retention = the "save", 2021 notes, 2023 statement), each with `Client: Margaret Whitaker`. **A.7:** seed `data/legal_hold.json` into LegalHolds (`CLIENT_NAME` scope, `HOLD-24-01187`). Tested against the real `holds.py` matcher and approve guard |
 | G.4 | Expected-results manifest (`data/expected.csv`) | ✅ Done | One row per file in `data/samples/` (11 now): `docType`, `recommendation`, `priority`, `legalHold`, `why`. A test fails if a sample is added without a row, checks priorities against the generators, and checks the legal-hold column against the holds `scripts/seed.py` loads (Arthur Smith + Margaret Whitaker). Use it to measure classifier accuracy (C.1) and as the demo checklist. **G.1:** add a row for each new file |
 | H.2, H.5 | Slide deck + judge Q&A | 🟡 In progress | See the Pitch & demo (H) section |
+| — | End-to-end test in live mode | 🟡 In progress | Live stack redeployed (`/audit/verify` → ok). Uploading the synthetic `data/samples/` set; bugs go to owners |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
 
