@@ -31,16 +31,17 @@ _Last updated: 2026-10-02_
 | A.4 | Object Lock on bucket | ✅ Done | Enabled at creation; per-object retention is D.7 |
 | A.5 | DynamoDB tables (Files, RetentionRules, LegalHolds, AuditLog) | ✅ Done | |
 | A.6 | `process` + `api` Lambdas, S3 trigger, Function URL, IAM | ✅ Done | Deployed as stack `shredsafe` |
-| A.7 | Seed script: retention rules + demo legal hold | ⬜ Not started | Planned: Arihant (next) |
-| A.8 | One-command deploy / teardown / frontend hosting | 🟡 In progress | `sam build && sam deploy` works. No teardown script; frontend runs via `npm run dev` |
+| A.7 | Seed script: retention rules + demo legal hold | ✅ Done | `python scripts/seed.py` (`--dry-run`, `--prune`). Data in `config/retention_rules.json` + `config/legal_holds.json`; demo hold `H-DEMO-1` = CLIENT_NAME "Arthur Smith" (matches `2020_Client_Communication_Smith.txt`, not Jane Smith) plus Aryan's G.3 hold from `data/legal_hold.json` (Margaret Whitaker). `reset_demo.py --yes` re-runs it |
+| A.8 | One-command deploy / teardown / frontend hosting | 🟡 In progress | `sam build && sam deploy` works. Reset script done by Aryan. Online VS Code: `cd frontend && npm run online` |
 | D.1 | Router, `/upload-url`, `/files`, `/files/{id}` | ✅ Done | `/files` also returns `legalHold`/`holdId`/`holdReason` |
 | D.2 | Approve / reject / bulk-approve with server-side guards | ✅ Done | Hold / RETAIN / `keepUntil` → 409; bulk returns `{approved, blocked}` |
-| D.3 | Restore from quarantine | ⬜ Not started | Unclaimed. Needs decision: restoring to `uploads/` re-triggers `process` |
-| D.4 | Purge → `PURGED` + audit entry | ⬜ Not started | Unclaimed |
-| D.5 | Macie scan / status / ingest → sensitivity score | ⬜ Not started | Planned: Arihant (after A.7) |
+| D.3 | Restore from quarantine | ✅ Done (Aryan) | See Aryan's section |
+| D.4 | Purge → `PURGED` + audit entry | ✅ Done (Aryan) | See Aryan's section |
+| D.5 | Macie scan / status / ingest → sensitivity score | ⬜ Not started | Planned: Arihant (next). Uses Aryan's B.6 score |
 | D.6 | `/dashboard` metrics | ⬜ Not started | Planned: Arihant (after D.5) |
-| D.7 | RETAIN + HIGH sensitivity → `records/` (LOCKED) | ⬜ Not started | Unclaimed. Depends on D.5 |
+| D.7 | RETAIN + HIGH sensitivity → `records/` (LOCKED) | ✅ Done (Aryan) | See Aryan's section |
 | — | Merged `anwesh/process` into `main` + fixed `process` wiring | ✅ Done | Handler name, imports, `fileId` from key, URL-decoded keys |
+| — | Re-fixed `process` after merge `b640268` | ✅ Done | That merge restored `from backend.process...` (Lambda import crash → uploads not classified) and `fileId = filename`. `test_process.py` now loads the handler like Lambda does, so this can't regress silently |
 
 **Contracts others depend on**
 - `Files` row fields the API reads: `s3Key`, `status` (`PENDING`), `recommendation`, `keepUntil` (`YYYY-MM-DD`), `ruleApplied`, `rationale`, and `clientName` / `clientId` / `accountId` / `branchId` when known (omit instead of `"N/A"`).

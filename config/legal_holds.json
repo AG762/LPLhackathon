@@ -1,0 +1,6 @@
+{
+  "_comment": "Demo legal holds (synthetic). Format matches backend/api/holds.py. CLIENT_NAME matches as a case-insensitive substring of the file's clientName, so use the full name.",
+  "holds": [
+    {"holdId": "H-DEMO-1", "scopeType": "CLIENT_NAME", "scopeValue": "Arthur Smith", "reason": "Arbitration: options allocation pricing dispute", "createdBy": "compliance-demo", "active": true}
+  ]
+}

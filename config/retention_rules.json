@@ -1,0 +1,16 @@
+{
+  "_comment": "Illustrative demo defaults from PLAN.md section 6, not legal advice. Real schedules must come from LPL compliance. docType values match the classifier prompt (backend/process/prompt.py).",
+  "rules": [
+    {"docType": "TRADE_CONFIRMATION", "retentionYears": 6, "trigger": "CREATED", "action": "RETAIN", "citation": "SEC Rule 17a-4 / FINRA Rule 4511", "description": "Broker trade confirmations"},
+    {"docType": "ACCOUNT_STATEMENT", "retentionYears": 6, "trigger": "CREATED", "action": "RETAIN", "citation": "SEC Rule 17a-4", "description": "Monthly or quarterly account statements"},
+    {"docType": "CLIENT_COMMUNICATION", "retentionYears": 3, "trigger": "CREATED", "action": "RETAIN", "citation": "SEC Rule 17a-4(b)(4)", "description": "Client emails and letters about recommendations"},
+    {"docType": "ADVISORY_AGREEMENT", "retentionYears": 6, "trigger": "ACCOUNT_CLOSED", "action": "RETAIN", "citation": "SEC Rule 17a-4 / Advisers Act Rule 204-2", "description": "New-account forms and advisory agreements; clock starts when the account closes"},
+    {"docType": "MARKETING", "retentionYears": 5, "trigger": "CREATED", "action": "RETAIN", "citation": "Advisers Act Rule 204-2", "description": "Published advertising and newsletters"},
+    {"docType": "DRAFT", "retentionYears": 0, "trigger": "CREATED", "action": "DELETE", "citation": "No retention requirement (draft superseded by final)", "description": "Working copies with a final version on file"},
+    {"docType": "DUPLICATE", "retentionYears": 0, "trigger": "CREATED", "action": "DELETE", "citation": "No retention requirement (exact copy of a stored record)", "description": "Duplicate copies; the original is kept"},
+    {"docType": "PERSONAL", "retentionYears": 0, "trigger": "CREATED", "action": "REVIEW", "citation": "No retention requirement (non-business file)", "description": "Personal or non-business files; deleted after a person reviews them"},
+    {"docType": "EXPIRED_PII", "retentionYears": 0, "trigger": "CREATED", "action": "DELETE", "citation": "Regulation S-P disposal rule", "description": "Scanned IDs and SSN copies past retention; disposal is recorded"},
+    {"docType": "ID_DOCUMENT", "retentionYears": 6, "trigger": "ACCOUNT_CLOSED", "action": "RETAIN", "citation": "SEC Rule 17a-4 / Regulation S-P", "description": "Customer identification copies kept with the account record"},
+    {"docType": "UNKNOWN", "retentionYears": 0, "trigger": "CREATED", "action": "REVIEW", "citation": "Low-confidence classification: human review", "description": "Anything the classifier could not place"}
+  ]
+}
