@@ -1,3 +1,6 @@
+__pycache__/
+.venv/
+.pytest_cache/
 
 # design tooling scratch (screenshots, decision page logs)
 .impeccable/review/
