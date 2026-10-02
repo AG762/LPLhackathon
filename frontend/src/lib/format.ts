@@ -60,7 +60,9 @@ export function formatDate(iso?: string) {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  // Date-only strings ("2026-04-15") parse as UTC midnight; format them in UTC so they don't shift a day.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso)
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: dateOnly ? 'UTC' : undefined })
 }
 
 export function formatDateTime(iso?: string) {

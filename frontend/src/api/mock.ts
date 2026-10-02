@@ -5,6 +5,7 @@ import type { Api } from './client'
 import { ApiError } from './errors'
 import type { AuditEntry, DashboardMetrics, FileRecord, Priority, Recommendation } from '../types'
 import { DEMO_ADVISOR } from '../lib/format'
+import { computeMetrics } from '../lib/metrics'
 
 const CITATIONS: Record<string, string> = {
   SEC_17A4_EXPIRED: 'SEC Rule 17a-4 / FINRA 4511, 6 years',
@@ -424,23 +425,8 @@ export const mockApi: Api = {
   async dashboard(): Promise<DashboardMetrics> {
     await ready
     await latency()
-    const all = [...files.values()]
-    const removed = all.filter((f) => f.status === 'QUARANTINED' || f.status === 'PURGED')
-    const totalBytes = all.reduce((s, f) => s + (f.sizeBytes ?? 0), 0)
-    const reclaimed = removed.reduce((s, f) => s + (f.sizeBytes ?? 0), 0)
     const verify = await this.verifyAudit()
-    return {
-      storageReclaimedBytes: reclaimed,
-      storageReclaimedPct: totalBytes ? reclaimed / totalBytes : 0,
-      piiItemsRemoved: removed.reduce((s, f) => s + Object.values(f.macieFindings ?? {}).reduce((a, b) => a + b, 0), 0),
-      highPriorityBacklog: all.filter((f) => f.status === 'PENDING' && f.priority === 'HIGH' && f.recommendation === 'DELETE').length,
-      overRetainedPct: all.length ? all.filter((f) => f.recommendation === 'DELETE').length / all.length : 0,
-      heldFilesDeleted: removed.filter((f) => f.legalHold).length,
-      autoCleared: all.filter((f) => f.recommendation !== 'REVIEW').length,
-      neededReview: all.filter((f) => f.recommendation === 'REVIEW').length,
-      totalFiles: all.length,
-      chainOk: verify.ok,
-    }
+    return computeMetrics([...files.values()], verify.ok)
   },
 
   async audit() {

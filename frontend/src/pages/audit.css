@@ -1,0 +1,178 @@
+.audit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- seal ---------- */
+
+.seal {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: var(--radius-m);
+  margin-bottom: 12px;
+  border: 1px solid;
+}
+
+.seal-ok {
+  background: var(--verified-wash);
+  border-color: color-mix(in srgb, var(--verified) 30%, transparent);
+  color: var(--verified);
+}
+
+.seal-broken {
+  background: var(--hold-wash);
+  border-color: color-mix(in srgb, var(--hold) 40%, transparent);
+  color: var(--hold);
+}
+
+.seal-glyph {
+  width: 48px;
+  height: 30px;
+  flex: none;
+}
+
+.seal-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 750;
+  font-stretch: 110%;
+}
+
+.seal-sub {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.rehearsal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+}
+
+/* ---------- chain ---------- */
+
+.chain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  --rail: var(--verified);
+}
+
+.link {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 18px 12px 12px;
+  margin-top: 14px;
+  background: var(--surface);
+  border: 2px solid var(--rail);
+  border-radius: 14px;
+}
+
+.link:first-child {
+  margin-top: 0;
+}
+
+/* The joint between two entries: a short bar that reads as the chain's connecting link. */
+.link-joint {
+  position: absolute;
+  left: 32px;
+  top: -16px;
+  width: 6px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--rail);
+}
+
+.link-seq {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  background: color-mix(in srgb, var(--rail) 14%, var(--surface));
+  color: var(--ink);
+}
+
+.link-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.link-action {
+  font-weight: 650;
+}
+
+.link-file {
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.link-meta {
+  font-size: 0.82rem;
+  margin-top: 2px;
+}
+
+.link-hashes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.8rem;
+  gap: 2px;
+}
+
+.link-broken {
+  --rail: var(--hold);
+  background: var(--hold-wash);
+  border-width: 3px;
+}
+
+.link-broken .link-joint {
+  /* the joint above the broken entry is snapped: draw it as two separated stubs */
+  height: 6px;
+  top: -16px;
+  box-shadow: 0 12px 0 var(--hold);
+}
+
+.link-untrusted {
+  --rail: var(--rule-strong);
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+.link-alarm {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--hold);
+}
+
+@media (max-width: 640px) {
+  .link {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .link-hashes {
+    grid-column: 2;
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 10px;
+  }
+  .link-joint {
+    left: 26px;
+  }
+}
