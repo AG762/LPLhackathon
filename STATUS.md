@@ -76,7 +76,7 @@ _Last updated: 2026-10-02_
 
 | D.4 | Purge → `PURGED` + audit entry | ✅ Done | `POST /files/{id}/purge` deletes every stored version (uploads/, quarantine/, restored/) and writes a `PURGED` audit entry; before the grace period ends it needs `DemoControls=true` ("Purge now" button in the queue). `POST /files/purge-expired` marks every file past its grace period |
 
-| D.7 | RETAIN + HIGH sensitivity → `records/` with Object Lock, `LOCKED` | 🟡 In progress | Built against a hand-set `priority: HIGH` until D.5 lands; D.5 can call the same function after scoring |
+| D.7 | RETAIN + HIGH sensitivity → `records/` with Object Lock, `LOCKED` | ✅ Done | `backend/api/routes/records.py`. `POST /files/lock-sensitive` locks every PENDING file with `recommendation: RETAIN`, `priority: HIGH` and a `keepUntil`, unless it's on a legal hold: copy to `records/`, GOVERNANCE retention until `keepUntil`, status `LOCKED`, `LOCKED` audit entry. **D.5:** call `records.lock_if_needed(file)` after scoring, or hit the route after ingest |
 
 **Not yet verified live:** E and F are tested locally (backend tests + mock mode) but not against the deployed stack. Needs a redeploy with the E changes.
 

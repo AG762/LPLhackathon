@@ -6,7 +6,7 @@ import logging
 import re
 
 from http_utils import HttpError, Request, response
-from routes import audit, dashboard, disposal, files, scan
+from routes import audit, dashboard, disposal, files, records, scan
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -19,6 +19,7 @@ ROUTES = [
     ("GET", r"/files", files.list_files),
     ("POST", r"/files/bulk-approve", disposal.bulk_approve),
     ("POST", r"/files/purge-expired", disposal.purge_expired),
+    ("POST", r"/files/lock-sensitive", records.lock_sensitive),
     ("GET", rf"/files/{ID}", files.get_file),
     ("POST", rf"/files/{ID}/approve", disposal.approve),
     ("POST", rf"/files/{ID}/reject", disposal.reject),
