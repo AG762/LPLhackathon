@@ -125,3 +125,20 @@ def test_bulk_approve_reports_blocked_files(aws, s3):
 def test_bulk_approve_validates_input(aws):
     assert call("POST", "/files/bulk-approve", {"ids": "a"})[0] == 400
     assert call("POST", "/files/bulk-approve", {"ids": [str(i) for i in range(101)]})[0] == 400
+
+
+def test_files_flag_held_files_before_approval(aws, s3):
+    add_file(aws, s3, "held", clientName="John Smith")
+    add_file(aws, s3, "free", clientName="Jane Doe")
+    add_hold(scopeType="CLIENT_NAME", scopeValue="Smith")
+
+    _, files = call("GET", "/files")
+    by_id = {f["fileId"]: f for f in files}
+    assert by_id["held"]["legalHold"] is True
+    assert by_id["held"]["holdId"] == "H-1" and by_id["held"]["holdReason"] == "Smith arbitration"
+    assert by_id["free"]["legalHold"] is False and "holdId" not in by_id["free"]
+
+    _, one = call("GET", "/files/held")
+    assert one["legalHold"] is True
+    # The stored row is not modified; the flag is computed on read
+    assert "legalHold" not in aws.get_item(Key={"fileId": "held"})["Item"]
