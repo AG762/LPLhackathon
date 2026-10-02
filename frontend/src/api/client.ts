@@ -133,7 +133,14 @@ const liveApi: Api = {
     if (!BASE_URL) throw new ApiError(0, 'VITE_API_URL is not set.')
     const res = await fetch(`${BASE_URL}/certificate`)
     if (!res.ok) {
-      throw new ApiError(res.status, res.status === 501 ? 'Not built on the backend yet: certificate' : `Certificate failed (${res.status})`)
+      let message = res.status === 501 ? 'Not built on the backend yet: certificate' : `Certificate failed (${res.status})`
+      try {
+        const data = await res.json()
+        if (data?.error && res.status !== 501) message = data.error
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new ApiError(res.status, message)
     }
     return res.blob()
   },

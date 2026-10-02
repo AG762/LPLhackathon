@@ -2,7 +2,8 @@
 import os
 
 import audit_log
-from http_utils import HttpError
+import certificate as certificate_doc
+from http_utils import Binary, HttpError
 
 
 def list_entries(req):
@@ -36,5 +37,10 @@ def verify(req):
 
 
 def certificate(req):
-    # TODO E.4: returns a PDF, so main() will need a binary (isBase64Encoded) response path
-    raise HttpError(501, "certificate not implemented")
+    check = audit_log.verify_chain()
+    if not check["ok"]:
+        # A certificate vouches for the log, so it can't be issued while the log fails its check.
+        raise HttpError(409, f"Integrity check failed at audit entry {check['brokenAtSeq']}. "
+                             "The certificate can't be issued until the check passes.")
+    content = certificate_doc.build(req.query.get("from"), req.query.get("to"))
+    return 200, Binary(content, "application/pdf", "certificate-of-disposal.pdf")
