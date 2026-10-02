@@ -131,3 +131,46 @@ def test_demo_controls_are_off_unless_enabled(aws):
 
     assert status == 404
     assert call("GET", "/audit/verify") == (200, {"ok": True})
+
+
+def test_appends_read_the_log_with_strongly_consistent_scans(aws, monkeypatch):
+    # An eventually consistent scan can miss the entry just written (approve writes APPROVED then
+    # QUARANTINED back to back), so the next append would collide and fail.
+    import aws as aws_clients
+    real_table = aws_clients.table
+    scans = []
+
+    def spy(env_var):
+        table = real_table(env_var)
+        if env_var == "AUDIT_TABLE":
+            original = table.scan
+            def scan(**kwargs):
+                scans.append(kwargs)
+                return original(**kwargs)
+            table.scan = scan
+        return table
+
+    monkeypatch.setattr(aws_clients, "table", spy)
+    audit_log.append("demo-advisor", "APPROVED", FILE)
+
+    assert scans and all(s.get("ConsistentRead") is True for s in scans)
+
+
+def test_restore_repairs_every_tampered_entry(aws, monkeypatch):
+    from conftest import call
+    monkeypatch.setenv("DEMO_CONTROLS", "true")
+    _three_entries()
+    call("POST", "/audit/demo/tamper")
+    audit_log.append("demo-advisor", "APPROVED", FILE)
+    audit_log.append("demo-advisor", "APPROVED", FILE)
+    call("POST", "/audit/demo/tamper")  # a different middle entry now
+
+    call("POST", "/audit/demo/restore")
+
+    assert call("GET", "/audit/verify") == (200, {"ok": True})
+
+
+def test_non_string_detail_still_verifies(aws):
+    audit_log.append("demo-advisor", "QUARANTINED", FILE, detail={"purgeAfterDays": 1})
+
+    assert audit_log.verify_chain() == {"ok": True}

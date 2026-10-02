@@ -10,11 +10,14 @@ AuditLog item: {seq, timestamp, actor, action, fileId?, fileHash?, ruleApplied?,
 import hashlib
 import json
 import logging
+import random
+import time
 from datetime import datetime, timezone
 
 from botocore.exceptions import ClientError
 
 import aws
+from http_utils import HttpError
 
 MAX_APPEND_ATTEMPTS = 5
 
@@ -39,7 +42,9 @@ def _from_item(item):
 
 def list_entries():
     table = aws.table("AUDIT_TABLE")
-    items, kwargs = [], {}
+    # Strongly consistent: the default scan can miss an entry written milliseconds ago, and append
+    # would then pick a seq that's already taken.
+    items, kwargs = [], {"ConsistentRead": True}
     while True:  # Scan is fine at demo scale
         page = table.scan(**kwargs)
         items.extend(page.get("Items", []))
@@ -57,12 +62,15 @@ def append(actor, action, file, rule_applied=None, detail=None):
         "fileId": file.get("fileId"),
         "fileHash": file.get("sha256"),
         "ruleApplied": rule_applied,
-        "detail": detail,
+        # Stored as text: a number would come back from DynamoDB as Decimal and stop hashing.
+        "detail": detail if detail is None or isinstance(detail, str) else json.dumps(detail, sort_keys=True, default=str),
     }
     fields = {k: v for k, v in fields.items() if v is not None}
     # The conditional put on seq means two writers can't both take the same slot. The loser
     # re-reads the head and chains onto the entry that beat it, so the chain never forks.
-    for _ in range(MAX_APPEND_ATTEMPTS):
+    for attempt in range(MAX_APPEND_ATTEMPTS):
+        if attempt:
+            time.sleep(random.uniform(0.02, 0.1) * attempt)  # let the competing writer finish
         entries = list_entries()
         head = entries[-1] if entries else None
         entry = {
@@ -78,7 +86,8 @@ def append(actor, action, file, rule_applied=None, detail=None):
             if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
                 raise
             logger.info("Audit seq %s taken by another writer, retrying", entry["seq"])
-    raise RuntimeError(f"Could not append audit entry after {MAX_APPEND_ATTEMPTS} attempts")
+    # An HttpError (not a crash) so bulk-approve reports this file as blocked and carries on.
+    raise HttpError(503, "The audit log is busy. Try again in a moment.")
 
 
 def verify_chain():
@@ -113,6 +122,8 @@ def demo_tamper():
 
 
 def demo_restore():
+    """Put back every tampered entry. Returns the first restored seq, or None if nothing was tampered."""
+    restored = []
     for entry in list_entries():
         if _DEMO_ORIGINAL in entry:
             aws.table("AUDIT_TABLE").update_item(
@@ -121,5 +132,5 @@ def demo_restore():
                 ExpressionAttributeNames={"#orig": _DEMO_ORIGINAL},
                 ExpressionAttributeValues={":real": entry[_DEMO_ORIGINAL]},
             )
-            return entry["seq"]
-    return None
+            restored.append(entry["seq"])
+    return restored[0] if restored else None

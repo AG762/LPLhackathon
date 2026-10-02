@@ -13,9 +13,9 @@ Parameters:
     Description: Grace period before quarantined files are purged (short for the demo)
   DemoControls:
     Type: String
-    Default: "true"
+    Default: "false"
     AllowedValues: ["true", "false"]
-    Description: Enables POST /audit/demo/tamper and /restore for rehearsing the tamper demo. Set false outside the demo.
+    Description: Enables POST /audit/demo/tamper and /restore for rehearsing the tamper demo. The Function URL has no auth, so turn this on only for the demo stack (see samconfig.toml).
 
 Globals:
   Function:

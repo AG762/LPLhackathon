@@ -147,5 +147,11 @@ const liveApi: Api = {
 }
 
 export const mode = getMode()
+// The live stack only accepts tamper/restore when deployed with DemoControls=true; mirror that here.
+const liveDemoControls = import.meta.env.VITE_DEMO_CONTROLS === 'true'
+if (!liveDemoControls) {
+  delete liveApi.tamper
+  delete liveApi.repair
+}
 export const api: Api = mode === 'live' ? liveApi : mockApi
 export const apiBaseUrl = BASE_URL
