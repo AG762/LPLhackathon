@@ -89,3 +89,37 @@ def verify_chain():
             return {"ok": False, "brokenAtSeq": entry["seq"]}
         prev_hash = entry["entryHash"]
     return {"ok": True}
+
+
+# ---------- demo controls (STORIES.md E.3) ----------
+# Rehearsal only: edit one stored entry the way someone in the DynamoDB console would (no re-hash),
+# keeping the original value beside it so restore can put it back. Off unless DEMO_CONTROLS=true.
+
+_DEMO_ORIGINAL = "demoOriginalActor"
+
+
+def demo_tamper():
+    entries = list_entries()
+    if len(entries) < 2:
+        return None
+    target = entries[len(entries) // 2]  # a middle entry, so the break shows entries trusted before and after
+    aws.table("AUDIT_TABLE").update_item(
+        Key={"seq": target["seq"]},
+        UpdateExpression="SET actor = :fake, #orig = if_not_exists(#orig, :real)",
+        ExpressionAttributeNames={"#orig": _DEMO_ORIGINAL},
+        ExpressionAttributeValues={":fake": "unknown", ":real": target["actor"]},
+    )
+    return target["seq"]
+
+
+def demo_restore():
+    for entry in list_entries():
+        if _DEMO_ORIGINAL in entry:
+            aws.table("AUDIT_TABLE").update_item(
+                Key={"seq": entry["seq"]},
+                UpdateExpression="SET actor = :real REMOVE #orig",
+                ExpressionAttributeNames={"#orig": _DEMO_ORIGINAL},
+                ExpressionAttributeValues={":real": entry[_DEMO_ORIGINAL]},
+            )
+            return entry["seq"]
+    return None

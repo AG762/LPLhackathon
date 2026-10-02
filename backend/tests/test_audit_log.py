@@ -103,3 +103,31 @@ def test_verify_route_reports_a_broken_chain(aws):
     )
 
     assert call("GET", "/audit/verify") == (200, {"ok": False, "brokenAtSeq": 1})
+
+
+def _three_entries():
+    for action in ("APPROVED", "QUARANTINED", "REJECTED"):
+        audit_log.append("demo-advisor", action, FILE)
+
+
+def test_demo_tamper_breaks_the_chain_and_restore_repairs_it(aws, monkeypatch):
+    from conftest import call
+    monkeypatch.setenv("DEMO_CONTROLS", "true")
+    _three_entries()
+
+    status, body = call("POST", "/audit/demo/tamper")
+    assert status == 200 and body == {"tamperedSeq": 2}
+    assert call("GET", "/audit/verify") == (200, {"ok": False, "brokenAtSeq": 2})
+
+    assert call("POST", "/audit/demo/restore") == (200, {"restoredSeq": 2})
+    assert call("GET", "/audit/verify") == (200, {"ok": True})
+
+
+def test_demo_controls_are_off_unless_enabled(aws):
+    from conftest import call
+    _three_entries()
+
+    status, _ = call("POST", "/audit/demo/tamper")
+
+    assert status == 404
+    assert call("GET", "/audit/verify") == (200, {"ok": True})

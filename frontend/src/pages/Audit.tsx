@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { api, mode } from '../api/client'
+import { api } from '../api/client'
 import { Sign } from '../components/Sign'
 import { fileName, formatDateTime, shortHash } from '../lib/format'
 import { useFiles } from '../state/files'
@@ -66,12 +66,20 @@ export default function AuditPage() {
   }
 
   async function tamper() {
-    await api.tamper?.()
+    try {
+      await api.tamper?.()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 'error')
+    }
     await load()
   }
 
   async function repair() {
-    await api.repair?.()
+    try {
+      await api.repair?.()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 'error')
+    }
     await load()
   }
 
@@ -157,7 +165,7 @@ export default function AuditPage() {
         )}
       </AnimatePresence>
 
-      {mode === 'mock' && api.tamper && (
+      {api.tamper && (entries?.length ?? 0) > 1 && (
         <div className="rehearsal">
           <span className="muted">Demo only:</span>
           <button className="btn btn-small" onClick={tamper} disabled={!verify?.ok}>

@@ -122,6 +122,13 @@ const liveApi: Api = {
   dashboard: () => request('GET', '/dashboard'),
   audit: () => request('GET', '/audit'),
   verifyAudit: () => request('GET', '/audit/verify'),
+  // Demo-only routes; the backend returns 404 unless DEMO_CONTROLS=true on the stack.
+  tamper: async () => {
+    await request('POST', '/audit/demo/tamper')
+  },
+  repair: async () => {
+    await request('POST', '/audit/demo/restore')
+  },
   certificate: async () => {
     if (!BASE_URL) throw new ApiError(0, 'VITE_API_URL is not set.')
     const res = await fetch(`${BASE_URL}/certificate`)
