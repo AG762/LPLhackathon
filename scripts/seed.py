@@ -1,6 +1,7 @@
 """Seed retention rules and demo legal holds into DynamoDB (STORIES.md A.7).
 
-Reads config/retention_rules.json and config/legal_holds.json and writes them to the
+Reads config/retention_rules.json, config/legal_holds.json and data/legal_hold.json (the G.3
+demo client's hold, written by data/generate_legal_hold.py) and writes them to the
 RetentionRules and LegalHolds tables of the deployed stack. Safe to re-run: each item is
 overwritten by its key. scripts/reset_demo.py calls this after wiping demo data.
 
@@ -15,7 +16,9 @@ import os
 
 import boto3
 
-CONFIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config")
+REPO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+CONFIG_DIR = os.path.join(REPO_DIR, "config")
+EXTRA_HOLD_FILES = (os.path.join(REPO_DIR, "data", "legal_hold.json"),)  # G.3, one hold object
 OUTPUT_KEYS = {"RetentionRulesTableName": "rules_table", "LegalHoldsTableName": "holds_table"}
 
 TRIGGERS = {"CREATED", "ACCOUNT_CLOSED"}
@@ -23,11 +26,16 @@ ACTIONS = {"RETAIN", "DELETE", "REVIEW"}
 SCOPE_TYPES = {"CLIENT_NAME", "CLIENT_ID", "ACCOUNT_ID", "BRANCH_ID", "KEYWORD"}
 
 
-def load_config(config_dir=CONFIG_DIR):
+def load_config(config_dir=CONFIG_DIR, extra_hold_files=EXTRA_HOLD_FILES):
     with open(os.path.join(config_dir, "retention_rules.json"), encoding="utf-8") as f:
         rules = json.load(f)["rules"]
     with open(os.path.join(config_dir, "legal_holds.json"), encoding="utf-8") as f:
         holds = json.load(f)["holds"]
+    for path in extra_hold_files:
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                extra = json.load(f)
+            holds.extend(extra if isinstance(extra, list) else [extra])
     validate(rules, holds)
     return rules, holds
 

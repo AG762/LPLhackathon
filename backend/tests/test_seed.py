@@ -41,6 +41,8 @@ def test_repo_config_is_valid_and_covers_classifier_types():
 
 def test_demo_hold_matches_held_sample_only():
     _, demo_holds = seed.load_config()
+    assert {"H-DEMO-1", "HOLD-24-01187"} <= {h["holdId"] for h in demo_holds}
+    assert holds.find_hold({"clientName": "Margaret Whitaker"}, demo_holds)["holdId"] == "HOLD-24-01187"  # G.3
     assert holds.find_hold({"clientName": "Arthur Smith"}, demo_holds)  # data/samples/2020_Client_Communication_Smith.txt
     assert not holds.find_hold({"clientName": "Jane Smith"}, demo_holds)  # in the tax-records CSV
     assert not holds.find_hold({"clientName": "Marcus Vance"}, demo_holds)
@@ -96,7 +98,21 @@ def test_validation_rejects_bad_config(tmp_path, rule, hold, message):
     (tmp_path / "retention_rules.json").write_text(json.dumps({"rules": [rule or good_rule]}))
     (tmp_path / "legal_holds.json").write_text(json.dumps({"holds": [hold or good_hold]}))
     with pytest.raises(SystemExit, match=message):
-        seed.load_config(str(tmp_path))
+        seed.load_config(str(tmp_path), extra_hold_files=())
+
+
+def test_extra_hold_file_is_added_and_checked_for_duplicates(tmp_path):
+    rule = {"docType": "OK", "retentionYears": 1, "trigger": "CREATED", "action": "RETAIN", "citation": "c"}
+    hold = {"holdId": "H-1", "scopeType": "CLIENT_NAME", "scopeValue": "x"}
+    (tmp_path / "retention_rules.json").write_text(json.dumps({"rules": [rule]}))
+    (tmp_path / "legal_holds.json").write_text(json.dumps({"holds": [hold]}))
+    extra = tmp_path / "legal_hold.json"
+    extra.write_text(json.dumps({**hold, "holdId": "H-2"}))
+    _, loaded = seed.load_config(str(tmp_path), extra_hold_files=(str(extra), str(tmp_path / "missing.json")))
+    assert [h["holdId"] for h in loaded] == ["H-1", "H-2"]
+    extra.write_text(json.dumps(hold))
+    with pytest.raises(SystemExit, match="duplicate holdId"):
+        seed.load_config(str(tmp_path), extra_hold_files=(str(extra),))
 
 
 def test_duplicate_keys_rejected():

@@ -31,7 +31,7 @@ _Last updated: 2026-10-02_
 | A.4 | Object Lock on bucket | ✅ Done | Enabled at creation; per-object retention is D.7 |
 | A.5 | DynamoDB tables (Files, RetentionRules, LegalHolds, AuditLog) | ✅ Done | |
 | A.6 | `process` + `api` Lambdas, S3 trigger, Function URL, IAM | ✅ Done | Deployed as stack `shredsafe` |
-| A.7 | Seed script: retention rules + demo legal hold | ✅ Done | `python scripts/seed.py` (`--dry-run`, `--prune`). Data in `config/retention_rules.json` + `config/legal_holds.json`; demo hold `H-DEMO-1` = CLIENT_NAME "Arthur Smith" (matches `2020_Client_Communication_Smith.txt`, not Jane Smith). `reset_demo.py --yes` re-runs it |
+| A.7 | Seed script: retention rules + demo legal hold | ✅ Done | `python scripts/seed.py` (`--dry-run`, `--prune`). Data in `config/retention_rules.json` + `config/legal_holds.json`; demo hold `H-DEMO-1` = CLIENT_NAME "Arthur Smith" (matches `2020_Client_Communication_Smith.txt`, not Jane Smith) plus Aryan's G.3 hold from `data/legal_hold.json` (Margaret Whitaker). `reset_demo.py --yes` re-runs it |
 | A.8 | One-command deploy / teardown / frontend hosting | 🟡 In progress | `sam build && sam deploy` works. Reset script done by Aryan. Online VS Code: `cd frontend && npm run online` |
 | D.1 | Router, `/upload-url`, `/files`, `/files/{id}` | ✅ Done | `/files` also returns `legalHold`/`holdId`/`holdReason` |
 | D.2 | Approve / reject / bulk-approve with server-side guards | ✅ Done | Hold / RETAIN / `keepUntil` → 409; bulk returns `{approved, blocked}` |
