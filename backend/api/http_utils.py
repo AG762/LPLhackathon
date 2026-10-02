@@ -46,9 +46,27 @@ def _json_default(value):
     raise TypeError(f"Not JSON serializable: {type(value).__name__}")
 
 
+@dataclass
+class Binary:
+    """A non-JSON response body, e.g. the certificate PDF. Sent base64-encoded per the Function URL format."""
+    content: bytes
+    content_type: str
+    filename: str | None = None
+
+
 def response(status, body):
     # CORS headers come from the Function URL config (infra), not from here;
     # setting them in both places makes browsers reject duplicate headers.
+    if isinstance(body, Binary):
+        headers = {"Content-Type": body.content_type}
+        if body.filename:
+            headers["Content-Disposition"] = f'attachment; filename="{body.filename}"'
+        return {
+            "statusCode": status,
+            "headers": headers,
+            "body": base64.b64encode(body.content).decode("ascii"),
+            "isBase64Encoded": True,
+        }
     return {
         "statusCode": status,
         "headers": {"Content-Type": "application/json"},

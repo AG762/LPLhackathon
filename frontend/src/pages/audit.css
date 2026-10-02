@@ -1,0 +1,201 @@
+.audit-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 460px;
+}
+
+.cert-blocked {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.audit-sign {
+  margin-bottom: 20px;
+}
+
+.audit-seal {
+  margin-bottom: 16px;
+}
+
+.audit-seal .sign {
+  max-width: none;
+}
+
+.audit-seal .sign-band {
+  font-size: 1.5rem;
+  padding: 8px 14px;
+}
+
+.audit-seal .sign-band svg {
+  width: 26px;
+  height: 26px;
+}
+
+.audit-seal .sign-body {
+  font-size: 1rem;
+}
+
+.rehearsal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.88rem;
+  margin-bottom: 28px;
+  padding: 10px 14px;
+  background: var(--layer);
+}
+
+/* ---------- chain ---------- */
+
+.chain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 2px solid var(--ink);
+  --rail: var(--ink);
+}
+
+.link {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 0 14px 0 0;
+  border-bottom: 1px solid var(--rule);
+  min-height: 64px;
+}
+
+.link-rail {
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+}
+
+/* The rail is the chain: each entry's line runs up into the one before it. */
+.link-rail::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  bottom: -1px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--rail);
+}
+
+.link:last-child .link-rail::after {
+  display: none;
+}
+
+.link-joint {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 50%;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--rail);
+}
+
+.link-node {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--ground);
+  border: 3px solid var(--rail);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.link-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.link-action {
+  font-family: var(--font-sign);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.link-file {
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.link-meta {
+  font-size: 0.84rem;
+  margin-top: 2px;
+}
+
+.link-hashes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.8rem;
+  gap: 2px;
+}
+
+.link-broken {
+  --rail: var(--danger);
+  background: var(--danger-wash);
+}
+
+/* the joint into the broken entry is snapped */
+.link-broken .link-joint {
+  height: 12%;
+}
+
+.link-broken .link-node {
+  background: var(--danger);
+  color: #fff;
+}
+
+.link-untrusted {
+  --rail: #a5abb3;
+}
+
+.link-untrusted .link-rail::after,
+.link-untrusted .link-joint {
+  background: repeating-linear-gradient(to bottom, var(--rail) 0 5px, transparent 5px 9px);
+}
+
+.link-untrusted .link-body,
+.link-untrusted .link-hashes {
+  color: var(--ink-2);
+}
+
+.link-alarm {
+  margin-top: 4px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .link {
+    grid-template-columns: 44px minmax(0, 1fr);
+    padding-bottom: 8px;
+  }
+  .link-hashes {
+    grid-column: 2;
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 10px;
+  }
+}

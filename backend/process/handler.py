@@ -1,6 +1,7 @@
 import json
 import os
 import hashlib
+from urllib.parse import unquote_plus
 from datetime import datetime, timezone
 import boto3
 from backend.process.classify import classify_text
@@ -17,34 +18,25 @@ def compute_sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 def extract_readable_text(file_bytes: bytes, filename: str) -> str:
-    """
-    C.2: Multi-file reader supporting txt, csv, json, and text-based formats.
-    """
     ext = os.path.splitext(filename)[1].lower()
-    
     if ext in [".txt", ".csv", ".json", ".log", ".tsv", ".md"]:
         return file_bytes.decode("utf-8", errors="ignore")
-    
-    # Simple binary/mock handling for docs/spreadsheets without heavy external deps
     try:
         decoded = file_bytes.decode("utf-8", errors="ignore")
         if len([c for c in decoded if c.isprintable()]) > len(decoded) * 0.7:
             return decoded
     except Exception:
         pass
-        
     return f"[Binary or unparsed file content for {filename}]"
 
 def process_file_event(event, context):
-    """
-    S3 Event Trigger handler for uploads/ prefix.
-    """
     table = dynamodb.Table(FILES_TABLE)
     processed_records = []
 
     for record in event.get("Records", []):
         bucket_name = record["s3"]["bucket"]["name"]
-        object_key = record["s3"]["object"]["key"]
+        raw_key = record["s3"]["object"]["key"]
+        object_key = unquote_plus(raw_key)
         filename = os.path.basename(object_key)
         
         # 1. Fetch file from S3

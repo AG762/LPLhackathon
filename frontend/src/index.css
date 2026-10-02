@@ -1,0 +1,637 @@
+/* ShredSafe: Safety Sign Standard.
+   Hazards are posted the way safety signs post them (ANSI Z535 signal words), and only where a file
+   truly can't be deleted. Exposure (how much client data a file holds) is a navy meter, never a
+   hazard colour. The shell is navy, close to the advisor portal it lives in. */
+
+:root {
+  /* neutrals */
+  --ground: #ffffff;
+  --layer: #f2f3f4;
+  --layer-strong: #e4e6e8;
+  --ink: #111214;
+  --ink-2: #4a4f57; /* secondary text, 8.3:1 on white */
+  --rule: #d4d7db;
+  --rule-strong: #111214;
+  --rail: #0e2841;
+  --rail-hover: #17375a;
+  --rail-ink: #ffffff;
+  --rail-ink-2: #b4c2d3;
+  --primary: #0e2841;
+  --primary-hover: #1a3d61;
+
+  /* safety colours (Z535) */
+  --danger: #c8102e;
+  --danger-wash: #fbe9ec;
+  --warning: #e87722;
+  --caution: #ffd100;
+  --notice: #0057b8;
+  --notice-wash: #e8f0fa;
+  --safe: #007a4d;
+  --safe-wash: #e6f3ed;
+
+  --focus: #0057b8;
+
+  --font-sign: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-ui: 'Barlow', system-ui, sans-serif;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* z-index scale */
+  --z-sticky: 10;
+  --z-toast: 40;
+
+  color-scheme: light;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--ground);
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  caret-color: var(--notice);
+  scrollbar-color: #9aa0a8 transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+::selection {
+  background: #cfe0f5;
+  color: var(--ink);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-sign);
+  margin: 0;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+a {
+  color: var(--ink);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  text-decoration-color: var(--notice);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--ink-2);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- shell ---------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+  /* paint the rail column full height, so long pages never show the rail ending */
+  background: linear-gradient(90deg, var(--rail) 240px, var(--ground) 240px);
+}
+
+.sidebar {
+  background: var(--rail);
+  color: var(--rail-ink);
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px;
+  font-family: var(--font-sign);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--rail-ink);
+}
+
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 24px;
+  color: var(--rail-ink-2);
+  text-decoration: none;
+  font-family: var(--font-sign);
+  font-weight: 700;
+  font-size: 1.15rem;
+  transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+}
+
+.nav a:hover {
+  color: var(--rail-ink);
+  background: var(--rail-hover);
+}
+
+.nav a.active {
+  background: var(--rail-ink);
+  color: var(--rail);
+}
+
+.nav a:focus-visible {
+  outline-color: var(--rail-ink);
+  outline-offset: -3px;
+}
+
+.nav-count {
+  margin-left: 10px;
+  min-width: 26px;
+  padding: 0 6px;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  background: var(--rail-ink);
+  color: var(--rail);
+}
+
+.nav a.active .nav-count {
+  background: var(--rail);
+  color: var(--rail-ink);
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 24px;
+  font-size: 0.88rem;
+}
+
+.advisor-name {
+  font-weight: 600;
+  color: var(--rail-ink);
+}
+
+.advisor .muted,
+.sidebar-foot .muted {
+  color: var(--rail-ink-2);
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 2px solid var(--rail-ink);
+}
+
+.mode-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--rail-ink);
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mode-switch button[aria-pressed='true'] {
+  background: var(--rail-ink);
+  color: var(--rail);
+}
+
+.mode-switch button:focus-visible {
+  outline-color: var(--rail-ink);
+}
+
+.main {
+  padding: 36px 48px 72px;
+  min-width: 0;
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--rule-strong);
+  flex-wrap: wrap;
+}
+
+.page-head p {
+  margin-top: 8px;
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+
+@media (max-width: 860px) {
+  .shell {
+    /* minmax(0, …) so the scrolling tab strip can't widen the page past the viewport */
+    grid-template-columns: minmax(0, 1fr);
+    background: var(--ground);
+  }
+  .sidebar {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px 0;
+  }
+  .brand {
+    padding: 0;
+  }
+  .sidebar {
+    min-width: 0;
+  }
+  .nav {
+    flex-direction: row;
+    order: 3;
+    flex: 0 0 calc(100% + 32px);
+    min-width: 0;
+    margin: 0 -16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav a {
+    padding: 10px 14px;
+    white-space: nowrap;
+  }
+  .sidebar-foot {
+    margin: 0 0 0 auto;
+    padding: 0;
+    flex-direction: row;
+    align-items: center;
+  }
+  .advisor,
+  .mode-label {
+    display: none;
+  }
+  .main {
+    padding: 24px 16px 56px;
+  }
+  h1 {
+    font-size: 2rem;
+  }
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 2px solid var(--ink);
+  background: var(--ground);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--layer);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  border-color: var(--rule);
+  color: #8a9099;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--ground);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-primary:disabled {
+  background: var(--layer-strong);
+}
+
+.btn-small {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+}
+
+.btn-quiet {
+  border-color: transparent;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn-quiet:hover:not(:disabled) {
+  background: transparent;
+  text-decoration-color: var(--notice);
+}
+
+/* ---------- toasts ---------- */
+
+.toasts {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: var(--z-toast);
+  max-width: min(440px, calc(100vw - 32px));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--ink);
+  color: var(--ground);
+  padding: 12px 16px 12px 12px;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.22);
+}
+
+.toast-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  background: var(--safe);
+}
+
+.toast.error .toast-mark {
+  background: var(--danger);
+}
+
+.toast-mark svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- shared bits ---------- */
+
+.panel {
+  background: var(--ground);
+  border: 2px solid var(--ink);
+}
+
+.empty {
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+.empty h2 {
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.empty .btn {
+  margin-top: 18px;
+}
+
+/* ---------- signs (ANSI Z535 format: signal-word band over a message panel) ---------- */
+
+.sign {
+  border: 2px solid #000;
+  background: var(--ground);
+  max-width: 76ch;
+}
+
+.sign-band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  font-family: var(--font-sign);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.sign-band svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.sign-body {
+  padding: 10px 14px 12px;
+  font-size: 0.95rem;
+}
+
+.sign-body strong {
+  font-weight: 700;
+}
+
+.sign-danger .sign-band {
+  background: var(--danger);
+  color: #fff;
+}
+
+.sign-warning .sign-band {
+  background: var(--warning);
+  color: #000;
+}
+
+.sign-caution .sign-band {
+  background: var(--caution);
+  color: #000;
+}
+
+.sign-notice .sign-band {
+  background: var(--notice);
+  color: #fff;
+}
+
+.sign-safe .sign-band {
+  background: var(--safe);
+  color: #fff;
+}
+
+.sign-compact .sign-band {
+  font-size: 0.95rem;
+  padding: 3px 10px;
+}
+
+.sign-compact .sign-body {
+  padding: 8px 12px 10px;
+  font-size: 0.9rem;
+}
+
+.alert-mark {
+  fill: #000;
+}
+
+.sign-danger .alert-mark,
+.chip-danger .alert-mark {
+  fill: var(--danger);
+}
+
+.sign-warning .alert-mark-inverse,
+.chip-warning .alert-mark-inverse {
+  fill: var(--warning);
+}
+
+.sign-caution .alert-mark-inverse,
+.chip-caution .alert-mark-inverse {
+  fill: var(--caution);
+}
+
+/* risk chip: a sign reduced to its band */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 6px;
+  font-family: var(--font-sign);
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  border: 2px solid transparent;
+}
+
+.chip svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.chip-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.chip-warning {
+  background: var(--warning);
+  color: #000;
+}
+
+.chip-caution {
+  background: var(--caution);
+  color: #000;
+}
+
+.chip-notice {
+  background: var(--notice);
+  color: #fff;
+}
+
+.chip-safe {
+  background: var(--safe);
+  color: #fff;
+}
+
+.chip-plain {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.chip-solid {
+  background: var(--primary);
+  color: var(--ground);
+}
+
+.chip-ghost {
+  border-color: var(--rule);
+  border-style: dashed;
+  color: var(--ink-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

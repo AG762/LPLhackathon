@@ -11,6 +11,11 @@ Parameters:
     Type: Number
     Default: 1
     Description: Grace period before quarantined files are purged (short for the demo)
+  DemoControls:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enables POST /audit/demo/tamper and /restore for rehearsing the tamper demo. The Function URL has no auth, so turn this on only for the demo stack (see samconfig.toml).
 
 Globals:
   Function:
@@ -96,7 +101,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../backend/process
-      Handler: handler.main
+      Handler: handler.process_file_event
       Timeout: 120 # Bedrock reading a multi-page PDF can take a while
       Environment:
         Variables:
@@ -145,6 +150,8 @@ Resources:
           HOLDS_TABLE: !Ref LegalHoldsTable
           AUDIT_TABLE: !Ref AuditLogTable
           ACCOUNT_ID: !Ref AWS::AccountId # Macie CreateClassificationJob needs it
+          QUARANTINE_DAYS: !Ref QuarantineDays
+          DEMO_CONTROLS: !Ref DemoControls
       Policies:
         - S3CrudPolicy: { BucketName: !Ref FilesBucket }
         - DynamoDBCrudPolicy: { TableName: !Ref FilesTable }

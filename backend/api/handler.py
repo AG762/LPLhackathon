@@ -28,6 +28,8 @@ ROUTES = [
     ("GET", r"/dashboard", dashboard.get),
     ("GET", r"/audit", audit.list_entries),
     ("GET", r"/audit/verify", audit.verify),
+    ("POST", r"/audit/demo/tamper", audit.demo_tamper),
+    ("POST", r"/audit/demo/restore", audit.demo_restore),
     ("GET", r"/certificate", audit.certificate),
 ]
 _COMPILED = [(method, re.compile(pattern + r"/?"), fn) for method, pattern, fn in ROUTES]
