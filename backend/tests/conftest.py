@@ -10,6 +10,7 @@ import handler
 BUCKET = "shredsafe-test"
 FILES = "Files"
 HOLDS = "LegalHolds"
+AUDIT = "AuditLog"
 
 
 def event(method, path, body=None, query=None):
@@ -27,11 +28,11 @@ def call(method, path, body=None, query=None):
     return res["statusCode"], json.loads(res["body"])
 
 
-def _table(ddb, name, key):
+def _table(ddb, name, key, key_type="S"):
     return ddb.create_table(
         TableName=name,
         KeySchema=[{"AttributeName": key, "KeyType": "HASH"}],
-        AttributeDefinitions=[{"AttributeName": key, "AttributeType": "S"}],
+        AttributeDefinitions=[{"AttributeName": key, "AttributeType": key_type}],
         BillingMode="PAY_PER_REQUEST",
     )
 
@@ -43,11 +44,13 @@ def aws(monkeypatch):
     monkeypatch.setenv("BUCKET_NAME", BUCKET)
     monkeypatch.setenv("FILES_TABLE", FILES)
     monkeypatch.setenv("HOLDS_TABLE", HOLDS)
+    monkeypatch.setenv("AUDIT_TABLE", AUDIT)
     with mock_aws():
         aws_clients.reset()
         # Mirrors infra: Object Lock implies versioning
         boto3.client("s3").create_bucket(Bucket=BUCKET, ObjectLockEnabledForBucket=True)
         ddb = boto3.resource("dynamodb")
         _table(ddb, HOLDS, "holdId")
+        _table(ddb, AUDIT, "seq", key_type="N")  # AuditLogTable: numeric seq
         yield _table(ddb, FILES, "fileId")
         aws_clients.reset()

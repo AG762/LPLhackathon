@@ -1,13 +1,14 @@
 """/audit, /audit/verify, /certificate (STORIES.md E.2, E.4)"""
+import audit_log
 from http_utils import HttpError
 
 
 def list_entries(req):
-    raise HttpError(501, "audit not implemented")
+    return 200, audit_log.list_entries()
 
 
 def verify(req):
-    raise HttpError(501, "audit verify not implemented")
+    return 200, audit_log.verify_chain()
 
 
 def certificate(req):
