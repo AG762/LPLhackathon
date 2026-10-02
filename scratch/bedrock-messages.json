@@ -1,0 +1,8 @@
+[
+  {
+    "role": "user",
+    "content": [
+      { "text": "You are a document classifier. Reply with JSON only: {\"doc_type\": string, \"confidence\": number, \"rationale\": string}. Classify: 'Monthly brokerage account statement for account 1234, period ending Jan 2024.'" }
+    ]
+  }
+]
