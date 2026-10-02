@@ -56,11 +56,30 @@ _Last updated: 2026-10-02_
 ## Anwesh: classification (C), rules (B), dataset (G)
 _Owner to fill in._
 
-## Audit log (E)
-_Owner to fill in. E.1–E.4 are merged to `main`._
+## Aryan: audit log (E) + frontend (F)
+_Last updated: 2026-10-02_
 
-## Frontend (F)
-_Owner to fill in._
+| ID | Task | Status | Notes |
+|---|---|---|---|
+| E.1 | `append_audit()`: hash-chained entries, safe against concurrent writers | ✅ Done | `backend/api/audit_log.py`. `entryHash = sha256(prevHash + canonical entry)`; conditional put on `seq` + retry; strongly consistent scans |
+| E.2 | `verify_chain()` + `/audit` and `/audit/verify` | ✅ Done | Returns `{ok}` or `{ok: false, brokenAtSeq}` |
+| E.3 | Tamper demo + restore for rehearsals | ✅ Done | `POST /audit/demo/tamper` and `/audit/demo/restore`, 404 unless `DemoControls=true` (set in `samconfig.toml` for the demo stack) |
+| E.4 | Certificate of Disposal PDF | ✅ Done | `GET /certificate?from=&to=`; 409 while the integrity check fails; no new dependencies |
+| F.1 | App shell, routing, mock/live API toggle, demo advisor | ✅ Done | `cd frontend && npm run dev`; sidebar switches Demo ↔ Live API |
+| F.2 | Folder drag-and-drop upload with per-file progress | ✅ Done | Presigned PUTs, 4 at a time |
+| F.3 | Review queue sorted by exposure, rationale + rule on expand | ✅ Done | |
+| F.4 | Approve / reject / bulk-approve / restore; held files blocked | ✅ Done | Reads `legalHold` from `/files`; bulk handles `{approved, blocked}`. Restore waits on D.3 |
+| F.5 | Scan button + re-sort animation | ✅ Done | Live mode waits on D.5 |
+| F.6 | Live updates (polls `/files` every 3 s) | ✅ Done | |
+| F.7 | Dashboard | ✅ Done | Falls back to computing from `/files` until D.6 lands; reference calc in `frontend/src/lib/metrics.ts` |
+| F.8 | Audit log view, integrity badge, certificate download | ✅ Done | Certificate button disabled while the check fails |
+
+**Not yet verified live:** E and F are tested locally (backend tests + mock mode) but not against the deployed stack. Needs a redeploy with the E changes.
+
+**Contracts others depend on**
+- Call `audit_log.append(actor, action, file, rule_applied=None, detail=None)` for every state change; it reads `fileId` and `sha256` from `file`.
+- Frontend reads these `Files` fields beyond the API list above: `docType`, `confidence`, `sensitivityScore`, `priority` (`HIGH|MEDIUM|LOW`), `macieFindings`, `citation`, `sizeBytes`, `sha256`.
+- `/dashboard` shape the frontend expects: `DashboardMetrics` in `frontend/src/types.ts`.
 
 ## Pitch & demo (H)
 _Unclaimed._
