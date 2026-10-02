@@ -82,6 +82,7 @@ _Last updated: 2026-10-02_
 | D.4 | Purge → `PURGED` + audit entry | ✅ Done | `POST /files/{id}/purge` deletes every stored version (uploads/, quarantine/, restored/) and writes a `PURGED` audit entry; before the grace period ends it needs `DemoControls=true` ("Purge now" button in the queue). `POST /files/purge-expired` marks every file past its grace period |
 | D.7 | RETAIN + HIGH sensitivity → `records/` with Object Lock, `LOCKED` | ✅ Done | `backend/api/routes/records.py`. `POST /files/lock-sensitive` locks every PENDING file with `recommendation: RETAIN`, `priority: HIGH` and a `keepUntil`, unless it's on a legal hold: copy to `records/`, GOVERNANCE retention until `keepUntil`, status `LOCKED`, `LOCKED` audit entry. **D.5:** call `records.lock_if_needed(file)` after scoring, or hit the route after ingest |
 | B.6 | `score_sensitivity()`: Macie counts → score + `HIGH`/`MEDIUM`/`LOW` | ✅ Done | `backend/api/sensitivity.py` (in `api/` because `shared/` isn't packaged into any Lambda). `score_sensitivity({type: count}) -> (score, priority)`; PLAN.md §6 weights; accepts Macie names (`USA_SOCIAL_SECURITY_NUMBER`) and the classifier's short names (`SSN`, `DOB`). **D.5:** call it per file in `/scan/ingest` |
+| B.7 | Bedrock `pii_types` fallback score for files Macie can't read | 🟡 In progress | Taken from Anwesh's track |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
 
