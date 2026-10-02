@@ -13,6 +13,10 @@ _Nobody owns these yet (as of 2026-10-02). Ordered by value to the demo. H is he
 | Task | Size | Where to start | Depends on / notes |
 |---|---|---|---|
 | **H: Pitch & demo** (H.1–H.5): slides, demo script with timings, backup video, judge Q&A sheet | Large | PLAN.md §1–3, §9 (demo script), §12 (risks), §14 (business model) | Can start now. Rehearsal + video need the live app working end to end |
+| **End-to-end test in live mode**: upload `data/samples/`, check queue, approve/reject, audit page, certificate; file bugs to owners | Small, ongoing | `frontend/README.md`; switch the sidebar to Live | Needs your forwarded frontend URL in `FrontendOrigin` (ask Arihant to deploy) |
+| **Demo reset script** (rest of A.8): empty the bucket (all versions) + tables, then re-seed, for rehearsals | Small | new `scripts/reset_demo.py` | Re-seed calls Arihant's A.7 seed script. Don't touch `records/` (Object Lock) |
+| **D.4 Purge**: mark `PURGED` + audit entry when a quarantined file is deleted | Medium | `disposal.py` + `infra/template.yaml` | Either an S3 `LifecycleExpiration` event → Lambda, or a "Purge now" demo route (simpler) |
+| **D.7 Locked records**: RETAIN + HIGH sensitivity → copy to `records/` with Object Lock retention, status `LOCKED` | Medium | `backend/api/routes/` | Needs `priority` from D.5 (Arihant). Can build against a hand-set `priority: HIGH` row |
 
 Conventions: branch from `main`, open a PR, Arihant merges + deploys. Backend tests: `cd backend && python -m pytest -q`.
 Stretch items (PLAN.md §5: near-duplicate detection, NL policy authoring, compliance-officer view, ask-the-auditor chat) only after the demo works end to end.
@@ -70,10 +74,6 @@ _Last updated: 2026-10-02_
 | F.8 | Audit log view, integrity badge, certificate download | ✅ Done | Certificate button disabled while the check fails |
 
 | D.3 | Restore from quarantine during the grace period | 🟡 In progress | Claimed from the unclaimed list. `process` must skip a `fileId` that already has a row, or restoring re-classifies the file |
-| D.4 | Purge → `PURGED` + audit entry | ⬜ Planned | "Purge now" demo route first; lifecycle event later if time |
-| D.7 | RETAIN + HIGH sensitivity → `records/` with Object Lock, `LOCKED` | ⬜ Planned | Built against a hand-set `priority: HIGH` until D.5 lands |
-| A.8 (part) | Demo reset script: empty bucket (all versions) + tables, then re-seed | ⬜ Planned | New `scripts/reset_demo.py`; leaves `records/` alone (Object Lock); re-seed calls A.7 once it exists |
-| — | End-to-end test in live mode | ⬜ Planned | After the next redeploy; bugs go to the owner |
 
 **Not yet verified live:** E and F are tested locally (backend tests + mock mode) but not against the deployed stack. Needs a redeploy with the E changes.
 
