@@ -4,7 +4,7 @@ import hashlib
 from urllib.parse import unquote_plus
 from datetime import datetime, timezone
 import boto3
-from backend.process.classify import classify_text
+from classify import classify_text  # Lambda runs from backend/process, so no package prefix
 
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 s3 = boto3.client("s3", region_name=AWS_REGION)
@@ -75,8 +75,12 @@ def process_file_event(event, context):
         if confidence < 0.75 or doc_type == "UNKNOWN":
             recommendation = "REVIEW"
             
+        # Keys are uploads/<fileId>/<filename> (see api /upload-url); fall back to the filename
+        parts = object_key.split("/")
+        file_id = parts[1] if len(parts) == 3 and parts[0] == "uploads" else filename
+
         item = {
-            "fileId": filename,
+            "fileId": file_id,
             "s3Key": object_key,
             "sha256": file_hash,
             "sizeBytes": size_bytes,

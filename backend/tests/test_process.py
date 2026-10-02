@@ -1,5 +1,18 @@
+import importlib.util
+import os
+import sys
 import unittest
-from backend.process.handler import compute_sha256, extract_readable_text
+
+# Load backend/process/handler.py the way Lambda does (its folder on the path, plain
+# `from classify import ...`). It is loaded under another name because the api Lambda
+# also has a module called `handler`.
+PROCESS_DIR = os.path.join(os.path.dirname(__file__), "..", "process")
+sys.path.append(PROCESS_DIR)
+_spec = importlib.util.spec_from_file_location("process_handler", os.path.join(PROCESS_DIR, "handler.py"))
+process_handler = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(process_handler)
+compute_sha256 = process_handler.compute_sha256
+extract_readable_text = process_handler.extract_readable_text
 
 class TestProcessPipeline(unittest.TestCase):
     def test_compute_sha256(self):
