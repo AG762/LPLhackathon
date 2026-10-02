@@ -3,7 +3,24 @@
 Story IDs are from [STORIES.md](STORIES.md). Each person updates **only their own section** (keeps pushes to `main` conflict-free).
 Statuses: ✅ Done · 🟡 In progress · ⬜ Not started. "Planned" means claimed but not started yet.
 
-**Unclaimed:** anything not listed under a person below. Take it and add it to your section.
+**Unclaimed:** see "Available for person 4" below. When you take something, move it into your own section.
+
+---
+
+## Available for person 4
+_Nobody owns these yet (as of 2026-10-02). Ordered by value to the demo._
+
+| Task | Size | Where to start | Depends on / notes |
+|---|---|---|---|
+| **H: Pitch & demo** (H.1–H.5): slides, demo script with timings, backup video, judge Q&A sheet | Large | PLAN.md §1–3, §9 (demo script), §12 (risks), §14 (business model) | Can start now. Rehearsal + video need the live app working end to end |
+| **End-to-end test in live mode**: upload `data/samples/`, check queue, approve/reject, audit page, certificate; file bugs to owners | Small, ongoing | `frontend/README.md`; switch the sidebar to Live | Needs your forwarded frontend URL in `FrontendOrigin` (ask Arihant to deploy) |
+| **Demo reset script** (rest of A.8): empty the bucket (all versions) + tables, then re-seed, for rehearsals | Small | new `scripts/reset_demo.py` | Re-seed calls Arihant's A.7 seed script. Don't touch `records/` (Object Lock) |
+| **D.3 Restore** from quarantine during grace period | Small | `backend/api/routes/disposal.py` → `restore()` (frontend already calls it) | Decide first: copying back to `uploads/` re-triggers `process`. Suggest `process` skips a `fileId` that already has a row |
+| **D.4 Purge**: mark `PURGED` + audit entry when a quarantined file is deleted | Medium | `disposal.py` + `infra/template.yaml` | Either an S3 `LifecycleExpiration` event → Lambda, or a "Purge now" demo route (simpler) |
+| **D.7 Locked records**: RETAIN + HIGH sensitivity → copy to `records/` with Object Lock retention, status `LOCKED` | Medium | `backend/api/routes/` | Needs `priority` from D.5 (Arihant). Can build against a hand-set `priority: HIGH` row |
+
+Conventions: branch from `main`, open a PR, Arihant merges + deploys. Backend tests: `cd backend && python -m pytest -q`.
+Stretch items (PLAN.md §5: near-duplicate detection, NL policy authoring, compliance-officer view, ask-the-auditor chat) only after the demo works end to end.
 
 ---
 
