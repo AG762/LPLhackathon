@@ -1,0 +1,186 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: ShredSafe hackathon stack (S3, Lambda, DynamoDB; Bedrock + Macie via IAM)
+
+Parameters:
+  FrontendOrigin:
+    Type: String
+    Default: http://localhost:5173
+    Description: Origin allowed by CORS (Vite dev server by default)
+  QuarantineDays:
+    Type: Number
+    Default: 1
+    Description: Grace period before quarantined files are purged (short for the demo)
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 512
+
+Resources:
+  # ---------- Storage ----------
+
+  FilesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # Built from a string (not !Ref'd by the functions) so the S3 -> process
+      # trigger doesn't create a circular dependency.
+      BucketName: !Sub "${AWS::StackName}-files-${AWS::AccountId}"
+      # Object Lock can only be turned on when the bucket is created, and it
+      # requires versioning. No default retention: records/ objects get
+      # per-object retention when they are locked (STORIES.md D.7).
+      ObjectLockEnabled: true
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: [!Ref FrontendOrigin]
+            AllowedMethods: [PUT]
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          # Grace period: quarantined files expire, then their old versions are removed.
+          - Id: purge-quarantine
+            Status: Enabled
+            Prefix: quarantine/
+            ExpirationInDays: !Ref QuarantineDays
+            NoncurrentVersionExpirationInDays: 1
+          # Versioning keeps a hidden copy when a file is "moved" (copy + delete)
+          # out of uploads/. Remove those copies so deletion is real.
+          - Id: purge-old-upload-versions
+            Status: Enabled
+            Prefix: uploads/
+            NoncurrentVersionExpirationInDays: 1
+          - Id: cleanup-delete-markers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
+
+  FilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{ AttributeName: fileId, AttributeType: S }]
+      KeySchema: [{ AttributeName: fileId, KeyType: HASH }]
+
+  RetentionRulesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{ AttributeName: docType, AttributeType: S }]
+      KeySchema: [{ AttributeName: docType, KeyType: HASH }]
+
+  LegalHoldsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{ AttributeName: holdId, AttributeType: S }]
+      KeySchema: [{ AttributeName: holdId, KeyType: HASH }]
+
+  AuditLogTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{ AttributeName: seq, AttributeType: N }]
+      KeySchema: [{ AttributeName: seq, KeyType: HASH }]
+
+  # ---------- Functions ----------
+
+  ProcessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/process
+      Handler: handler.main
+      Timeout: 120 # Bedrock reading a multi-page PDF can take a while
+      Environment:
+        Variables:
+          BUCKET_NAME: !Sub "${AWS::StackName}-files-${AWS::AccountId}"
+          FILES_TABLE: !Ref FilesTable
+          RULES_TABLE: !Ref RetentionRulesTable
+          HOLDS_TABLE: !Ref LegalHoldsTable
+          AUDIT_TABLE: !Ref AuditLogTable
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Sub "${AWS::StackName}-files-${AWS::AccountId}"
+        - DynamoDBCrudPolicy: { TableName: !Ref FilesTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref AuditLogTable }
+        - DynamoDBReadPolicy: { TableName: !Ref RetentionRulesTable }
+        - DynamoDBReadPolicy: { TableName: !Ref LegalHoldsTable }
+        - Statement:
+            - Effect: Allow
+              # If the Bedrock Mantle client is rejected with AccessDenied,
+              # check the exact action it needs in the error message and add it here.
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
+      Events:
+        Upload:
+          Type: S3
+          Properties:
+            Bucket: !Ref FilesBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/api
+      Handler: handler.main
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref FilesBucket
+          FILES_TABLE: !Ref FilesTable
+          RULES_TABLE: !Ref RetentionRulesTable
+          HOLDS_TABLE: !Ref LegalHoldsTable
+          AUDIT_TABLE: !Ref AuditLogTable
+          ACCOUNT_ID: !Ref AWS::AccountId # Macie CreateClassificationJob needs it
+      Policies:
+        - S3CrudPolicy: { BucketName: !Ref FilesBucket }
+        - DynamoDBCrudPolicy: { TableName: !Ref FilesTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref AuditLogTable }
+        - DynamoDBReadPolicy: { TableName: !Ref RetentionRulesTable }
+        - DynamoDBReadPolicy: { TableName: !Ref LegalHoldsTable }
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObjectRetention # locking files in records/ (D.7)
+              Resource: !Sub "${FilesBucket.Arn}/records/*"
+            - Effect: Allow
+              Action:
+                - macie2:CreateClassificationJob
+                - macie2:DescribeClassificationJob
+                - macie2:ListFindings
+                - macie2:GetFindings
+              Resource: "*"
+      FunctionUrlConfig:
+        AuthType: NONE # demo only: no login
+        Cors:
+          AllowOrigins: [!Ref FrontendOrigin]
+          AllowMethods: [GET, POST]
+          AllowHeaders: [content-type]
+
+Outputs:
+  ApiUrl:
+    Description: Put this in the frontend's VITE_API_URL
+    Value: !GetAtt ApiFunctionUrl.FunctionUrl
+  BucketName:
+    Value: !Ref FilesBucket
+  FilesTableName:
+    Value: !Ref FilesTable
+  RetentionRulesTableName:
+    Value: !Ref RetentionRulesTable
+  LegalHoldsTableName:
+    Value: !Ref LegalHoldsTable
+  AuditLogTableName:
+    Value: !Ref AuditLogTable
