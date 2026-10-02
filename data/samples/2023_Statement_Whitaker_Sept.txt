@@ -1,0 +1,10 @@
+LPL FINANCIAL ACCOUNT STATEMENT
+Statement period: 2023-09-01 to 2023-09-30
+Client: Margaret Whitaker
+Account: LPL-731904
+
+Beginning value      $482,915.20
+Deposits                   $0.00
+Withdrawals            $2,500.00
+Change in value        -$3,118.44
+Ending value         $477,296.76

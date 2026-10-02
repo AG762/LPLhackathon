@@ -1,0 +1,9 @@
+{
+  "holdId": "HOLD-24-01187",
+  "scopeType": "CLIENT_NAME",
+  "scopeValue": "Margaret Whitaker",
+  "reason": "FINRA arbitration 24-01187 (synthetic demo case): preserve all records for this client",
+  "createdBy": "compliance@example.com",
+  "createdAt": "2024-03-04",
+  "active": true
+}
