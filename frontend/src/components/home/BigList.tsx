@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { motion, useScroll, useTransform } from 'motion/react'
+import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { Rise } from './Motion'
 
 // What happens to every file, as one big list. Each line lights up as it reaches the middle of the screen.
@@ -30,16 +30,18 @@ export default function BigList() {
 
 function Line({ n, big, small }: { n: number; big: string; small: string }) {
   const ref = useRef<HTMLLIElement>(null)
+  const reduce = useReducedMotion()
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start 90%', 'start 50%'] })
-  const opacity = useTransform(scrollYProgress, [0, 1], [0.18, 1])
-  const x = useTransform(scrollYProgress, [0, 1], [-28, 0])
+  // Reduced motion: every line fully lit from the start, nothing moves.
+  const opacity = useTransform(scrollYProgress, [0, 1], [reduce ? 1 : 0.2, 1])
+  const y = useTransform(scrollYProgress, [0, 1], [reduce ? 0 : 18, 0])
   return (
     <motion.li ref={ref} className="bl-line" style={{ opacity }}>
       <p className="bl-small">
         <span className="bl-n num">{n}</span>
         {small}
       </p>
-      <motion.p className="bl-big" style={{ x }}>
+      <motion.p className="bl-big" style={{ y }}>
         {big}
       </motion.p>
     </motion.li>

@@ -45,26 +45,29 @@ export default function Shredder({ items }: { items: Item[] }) {
       await new Promise((resolve) => requestAnimationFrame(resolve))
       await step({ y: [-190, 40], x: 0, rotate: [-2, 0], opacity: [0, 1] }, { duration: 0.7, ease: EASE })
       await wait(550)
+      // The count moves the moment the decision is shown, so the tally and the readout always agree.
       setPhase('decided')
+      setTally((t) => ({
+        shred: t.shred + (item.outcome === 'shred' ? 1 : 0),
+        hold: t.hold + (item.outcome === 'hold' ? 1 : 0),
+        kept: t.kept + (item.outcome === 'shred' || item.outcome === 'hold' ? 0 : 1),
+      }))
 
       if (item.outcome === 'shred') {
         await step({ y: 70 }, { duration: 0.3, ease: EASE })
         setShredding(true)
         await step({ y: 250 }, { duration: 1.15, ease: 'linear' })
-        setTally((t) => ({ ...t, shred: t.shred + 1 }))
         await wait(900)
       } else if (item.outcome === 'hold') {
         await step({ y: 70 }, { duration: 0.3, ease: EASE })
         setHoldUp(true)
         await wait(160)
         await step({ y: 6, rotate: -3 }, { duration: 0.45, ease: EASE })
-        setTally((t) => ({ ...t, hold: t.hold + 1 }))
         await wait(900)
         await step({ x: 340, rotate: 6, opacity: 0 }, { duration: 0.55, ease: [0.5, 0, 0.75, 0] })
         setHoldUp(false)
       } else {
         setStamped(true)
-        setTally((t) => ({ ...t, kept: t.kept + 1 }))
         await wait(1100)
         await step({ x: -340, rotate: -6, opacity: 0 }, { duration: 0.55, ease: [0.5, 0, 0.75, 0] })
       }
@@ -123,13 +126,12 @@ export default function Shredder({ items }: { items: Item[] }) {
 
         <div className="ss-head">
           <div className="ss-slot" />
-          <div className={`ss-readout ${verdictClass}`}>
-            <span className={`ss-led ${phase === 'decided' ? `ss-led-${item.outcome}` : 'ss-led-reading'}`} />
-            <span className="ss-readout-text">
-              {phase === 'reading' ? 'Reading file, checking rules and holds' : `${VERDICT[item.outcome]}. ${item.reason}`}
-            </span>
-          </div>
+          <span className="ss-head-mark">ShredSafe</span>
+          <span className={`ss-head-led ${phase === 'decided' ? `ss-led-${item.outcome}` : 'ss-led-reading'}`} />
+          <span className="ss-head-vent" />
         </div>
+        <div className="ss-glass" />
+        <div className="ss-base" />
 
         <div className="ss-bin">
           {shredding &&
@@ -146,18 +148,25 @@ export default function Shredder({ items }: { items: Item[] }) {
         </div>
       </div>
 
+      <p className={`ss-readout ${verdictClass}`} aria-hidden="true">
+        <span className={`ss-led ${phase === 'decided' ? `ss-led-${item.outcome}` : 'ss-led-reading'}`} />
+        <span className="ss-readout-text">
+          {phase === 'reading' ? `Reading ${item.name}` : `${VERDICT[item.outcome]}. ${item.reason}`}
+        </span>
+      </p>
+
       <figcaption className="ss-foot">
         <dl className="ss-tally">
           <div>
-            <dt>Cleared to delete</dt>
+            <dt>Cleared</dt>
             <dd className="num">{tally.shred}</dd>
           </div>
           <div className="ss-tally-hold">
-            <dt>Stopped by a hold</dt>
+            <dt>On hold</dt>
             <dd className="num">{tally.hold}</dd>
           </div>
           <div>
-            <dt>Kept or sent for review</dt>
+            <dt>Kept</dt>
             <dd className="num">{tally.kept}</dd>
           </div>
         </dl>

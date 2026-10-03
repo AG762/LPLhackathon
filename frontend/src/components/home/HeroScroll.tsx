@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from 'motion/react'
 import type { Stage } from './stage'
 
-// The opening and the hero are one pinned stage (stage.ts). On a first visit the gate's light ignites in
+// The opening and the hero are one pinned stage (stage.ts). On a first visit the slot's light ignites in
 // the dark and the camera pulls back while the headline rises; scrolling, a key or a click skips ahead.
 // Scroll then tells the story: one file is cleared and shredded, the next is under a legal hold and is
 // pushed back. Reduced motion (or no WebGL) gets a still frame of the end of the story instead.
@@ -24,8 +24,8 @@ interface Props {
 }
 
 const EASE = [0.16, 1, 0.3, 1] as const
-// When the headline starts to rise during the opening, in seconds from the first frame.
-const TITLE_AT = 1.35
+// When the headline starts to rise during the opening, in seconds from the opening's first frame.
+const TITLE_AT = 1.45
 
 const BEATS = [
   { at: [0, 0.1], title: 'Every file has a fate.', sub: 'Statements, drafts, scanned IDs, old emails. Years of them sit on every branch drive.' },
@@ -53,37 +53,50 @@ export default function HeroScroll({ cleared, held, intro, still, onIntroDone }:
   useEffect(() => {
     let alive = true
     let titleTimer = 0
+    let built: Stage | null = null
+    const fail = () => {
+      if (!alive) return
+      setThree('off')
+      setTitleUp(true)
+      done.current()
+    }
     import('./stage')
       .then(({ createStage }) => {
-        if (!alive || !host.current) return
-        try {
-          stage.current = createStage(
-            host.current,
-            { name: cleared.name, kind: cleared.kind, client: cleared.client },
-            { name: held.name, kind: held.kind, client: held.client, stamp: 'Legal hold' },
-            { intro, still, onIntroDone: () => done.current() },
-          )
-        } catch {
-          setThree('off')
-          done.current()
+        if (!alive || !host.current) return null
+        return createStage(
+          host.current,
+          { name: cleared.name, kind: cleared.kind, client: cleared.client },
+          { name: held.name, kind: held.kind, client: held.client, stamp: 'Legal hold' },
+          {
+            intro,
+            still,
+            // The headline is timed from the opening's own clock, which starts once the shaders are in.
+            onIntroStart: () => {
+              if (alive) titleTimer = window.setTimeout(() => setTitleUp(true), TITLE_AT * 1000)
+            },
+            onIntroDone: () => done.current(),
+          },
+        )
+      })
+      .then((s) => {
+        if (!s) return
+        if (!alive) {
+          s.dispose()
           return
         }
+        built = s
+        stage.current = s
         setThree('ok')
-        if (intro && !still) titleTimer = window.setTimeout(() => setTitleUp(true), TITLE_AT * 1000)
-        else done.current()
+        if (!intro || still) done.current()
       })
-      .catch(() => {
-        if (!alive) return
-        setThree('off')
-        done.current()
-      })
+      .catch(fail)
     const onResize = () => stage.current?.resize()
     window.addEventListener('resize', onResize)
     return () => {
       alive = false
       window.clearTimeout(titleTimer)
       window.removeEventListener('resize', onResize)
-      stage.current?.dispose()
+      built?.dispose()
       stage.current = null
     }
     // Built once per pair of files.
@@ -132,6 +145,8 @@ export default function HeroScroll({ cleared, held, intro, still, onIntroDone }:
 
   const cue = useTransform(p, [0, 0.03], [1, 0])
   const shade = useTransform(p, [0.7, 0.8], [0, 1])
+  // The status line and the step ticks leave before the stage un-pins, so they never slide under the nav.
+  const hudOut = useTransform(p, [0.955, 0.99], [1, 0])
 
   const status = [
     { tone: 'idle', text: `Reading ${cleared.name}` },
@@ -146,6 +161,7 @@ export default function HeroScroll({ cleared, held, intro, still, onIntroDone }:
         <div className="hs-pin">
           {three !== 'off' && <div className="hs-3d" ref={host} aria-hidden="true" />}
           {three === 'off' && <div className="hs-flat" aria-hidden="true" />}
+          <div className="hs-shade" aria-hidden="true" />
           <div className="hs-shade hs-shade-left" aria-hidden="true" />
           <div className="hs-final">
             <h1 id="hs-title" className="hs-title">
@@ -190,7 +206,7 @@ export default function HeroScroll({ cleared, held, intro, still, onIntroDone }:
                   <motion.p
                     className="hs-sub"
                     initial={false}
-                    animate={titleUp ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0, y: 8, filter: 'blur(6px)' }}
+                    animate={titleUp ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
                     transition={{ duration: 0.9, delay: titleUp ? 0.45 : 0, ease: EASE }}
                   >
                     {b.sub}
@@ -206,21 +222,23 @@ export default function HeroScroll({ cleared, held, intro, still, onIntroDone }:
           ),
         )}
 
-        <motion.div
-          className="hs-hud"
-          initial={false}
-          animate={{ opacity: titleUp ? 1 : 0 }}
-          transition={{ duration: 0.8, delay: titleUp ? 0.9 : 0 }}
-        >
-          <p className={`hs-status hs-status-${status.tone}`} aria-live="off">
-            <span className="hs-led" aria-hidden="true" />
-            <span className="hs-status-text">{status.text}</span>
-          </p>
-          <ol className="hs-steps" aria-hidden="true">
-            {BEATS.map((b, i) => (
-              <li key={b.title} className={i === beat ? 'is-on' : i < beat ? 'is-past' : ''} />
-            ))}
-          </ol>
+        <motion.div className="hs-hud-wrap" style={{ opacity: hudOut }}>
+          <motion.div
+            className="hs-hud"
+            initial={false}
+            animate={{ opacity: titleUp ? 1 : 0 }}
+            transition={{ duration: 0.8, delay: titleUp ? 0.9 : 0 }}
+          >
+            <p className={`hs-status hs-status-${status.tone}`} aria-live="off">
+              <span className="hs-led" aria-hidden="true" />
+              <span className="hs-status-text">{status.text}</span>
+            </p>
+            <ol className="hs-steps" aria-hidden="true">
+              {BEATS.map((b, i) => (
+                <li key={b.title} className={i === beat ? 'is-on' : i < beat ? 'is-past' : ''} />
+              ))}
+            </ol>
+          </motion.div>
         </motion.div>
 
         <motion.div className="hs-cue" style={{ opacity: cue }} aria-hidden="true">
@@ -252,6 +270,8 @@ function Ctas() {
   )
 }
 
+// Each beat fades and drifts in place as its stretch of the scroll arrives. Opacity and transform only:
+// these sit over a live WebGL canvas, so nothing here should cost a repaint.
 function Beat({
   p,
   at,
@@ -268,7 +288,7 @@ function Beat({
   children: ReactNode
 }) {
   const [start, end] = at
-  const fade = 0.025
+  const fade = 0.03
   const opacity = useTransform(
     p,
     first ? [0, end, end + fade] : last ? [start - fade, start] : [start - fade, start, end, end + fade],
@@ -277,16 +297,11 @@ function Beat({
   const y = useTransform(
     p,
     first ? [end, end + fade] : last ? [start - fade, start] : [start - fade, start, end, end + fade],
-    first ? [0, -28] : last ? [28, 0] : [28, 0, 0, -28],
-  )
-  const blur = useTransform(
-    p,
-    first ? [end, end + fade] : last ? [start - fade, start] : [start - fade, start, end, end + fade],
-    first ? ['blur(0px)', 'blur(8px)'] : last ? ['blur(8px)', 'blur(0px)'] : ['blur(8px)', 'blur(0px)', 'blur(0px)', 'blur(8px)'],
+    first ? [0, -24] : last ? [24, 0] : [24, 0, 0, -24],
   )
   const visibility = useTransform(opacity, [0, 0.02], ['hidden', 'visible'])
   return (
-    <motion.div className={className} style={{ opacity, y, filter: blur, visibility }}>
+    <motion.div className={className} style={{ opacity, y, visibility }}>
       {children}
     </motion.div>
   )
@@ -303,7 +318,7 @@ function RiseWords({ text, go }: { text: string; go: boolean }) {
               className="hs-word-in"
               initial={false}
               animate={{ y: go ? '0%' : '108%' }}
-              transition={{ duration: 1.1, delay: go ? i * 0.075 : 0, ease: EASE }}
+              transition={{ duration: 1.1, delay: go ? i * 0.07 : 0, ease: EASE }}
             >
               {word}
             </motion.span>
