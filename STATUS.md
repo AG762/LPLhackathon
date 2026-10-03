@@ -109,6 +109,7 @@ _Last updated: 2026-10-02_
 | F.19 | Start the sensitive-data scan automatically when an upload batch finishes, with a time estimate under the scan status | 🔵 In review (PR #29) | Skips if a scan is already running |
 | D.9 | Email each uploader when their files are scanned and ready for review (Amazon SES, scheduled) | 🔵 In review (PR #30, needs deploy + SES setup) | Off until NotifyFrom is set. Setup for Arihant: docs/notifications.md (verify sender + recipients in SES, set params, deploy) |
 | F.20 | Review queue search + recommendation filter; bulk approve in batches of 100 | 🔵 In review (PR #31) | `/` focuses search |
+| F.21 | Place a legal hold from a file in the queue (P2); export the audit log as CSV (P3); feature proposals P2–P9 | 🔵 In review (PR #32) | See docs/feature-proposals.md for must-haves |
 | — | `docs/feature-proposals.md` (P1: scan only new or changed files) | ✅ Merged (PR #17) | Team to set the Decision column; mark ✅ there if built |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
