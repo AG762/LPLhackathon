@@ -107,7 +107,7 @@ _Last updated: 2026-10-02. Rubric: 2026 LPL Financial University Hackathon Team 
 |---|---|---|---|---|
 | H.1 | Open questions: **pick our two award categories**, final name, presentation length | Team | ⬜ Not started | Categories: Startup We'd Buy Tomorrow · Biggest Business Impact · Best Customer Experience · Best Technical Execution (pick two). Length unknown; deck is built for 5 min + backup slides |
 | H.2 | Slide deck | Aryan | 🟡 In progress | Covers every rubric section (problem + research, user, solution, features built, demo, value, impact, tech + AWS, close). Real sources: IBM 2025, Veritas Databerg, SEC Reg S-P, LPL Q2 2026 8-K. Category tie-back slide added once H.1 is decided |
-| H.3 | Demo script with timings, two dry runs | Aryan | 🟡 In progress | Writing `docs/demo-script.md` (steps, timings, what to say, setup + reset checklist, fallbacks). Dry runs need the team and the live app |
+| H.3 | Demo script with timings, two dry runs | Aryan | 🟡 Script in PR; dry runs open | `docs/demo-script.md`: T-60 setup (reset, seed, pre-upload, pre-run the Macie scan), T-10 preflight, the five minutes with clicks + lines + timings, fallbacks, dry-run log. Dry runs need the team + live app |
 | H.4 | Recorded backup demo video | Unclaimed | ⬜ Not started | Rubric strongly recommends a recorded demo. Record after H.3 |
 | H.5 | Judge Q&A cheat sheet | Aryan | 🟡 In progress | Backup Q&A slide in the deck (S3 lifecycle?, AI misclassification, held files, log tampering, data handling) |
 
