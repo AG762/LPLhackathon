@@ -639,3 +639,47 @@
     display: none;
   }
 }
+
+/* P2: place a legal hold from the expanded row */
+.hold-from-file {
+  margin-top: 16px;
+}
+
+.hold-from-file-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--ground);
+}
+
+.hold-from-file-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+.hold-from-file-form input {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--ink);
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+}
+
+.hold-from-file-form input:focus-visible {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgb(10 14 20 / 0.1);
+}
+
+.hold-from-file-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

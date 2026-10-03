@@ -91,6 +91,7 @@ export interface AuditEntry {
   fileId?: string
   fileHash?: string
   ruleApplied?: string
+  detail?: string // e.g. why a hold was released, who was invited
   prevHash: string
   entryHash: string
 }
