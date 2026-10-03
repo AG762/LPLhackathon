@@ -1,6 +1,9 @@
-import { useRef, useState } from 'react'
+import { Fragment, lazy, Suspense, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from 'motion/react'
+import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
+
+// three.js is only needed here, so it loads in its own chunk after the page is up.
+const ShredField = lazy(() => import('./ShredField'))
 
 // The opening: a pinned stage that scroll drives. One file is cleared and shredded, the next belongs to
 // a client under legal hold and is stopped at the slot. The headline changes with each beat.
@@ -15,6 +18,8 @@ export interface HeroFile {
 interface Props {
   cleared: HeroFile
   held: HeroFile
+  // Seconds to wait before the opening headline rises in (after the intro); 0 shows it at once.
+  enterDelay: number
 }
 
 const BEATS = [
@@ -26,10 +31,11 @@ const BEATS = [
 
 const STRIPS = 10
 
-export default function HeroScroll({ cleared, held }: Props) {
+export default function HeroScroll({ cleared, held, enterDelay }: Props) {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
   const [beat, setBeat] = useState(0)
+  const reduce = useReducedMotion()
 
   useMotionValueEvent(p, 'change', (v) => {
     const next = v < 0.15 ? 0 : v < 0.45 ? 1 : v < 0.73 ? 2 : 3
@@ -39,7 +45,7 @@ export default function HeroScroll({ cleared, held }: Props) {
   // File A: drops into the slot (slot line sits at 330px in the stage).
   const aY = useTransform(p, [0, 0.1, 0.4], [40, 40, 340])
   // File B: arrives, is stopped by the barrier, and is pushed back.
-  const bY = useTransform(p, [0.44, 0.54, 0.6, 0.66], [-320, 40, 66, -6])
+  const bY = useTransform(p, [0.44, 0.54, 0.6, 0.66], [-560, 40, 66, -6])
   const bRotate = useTransform(p, [0.6, 0.66], [0, -4])
   const barrier = useTransform(p, [0.585, 0.605], [0, 1])
   const cue = useTransform(p, [0, 0.04], [1, 0])
@@ -54,11 +60,32 @@ export default function HeroScroll({ cleared, held }: Props) {
   return (
     <section className="hs" ref={ref} aria-label="ShredSafe in four steps">
       <div className="hs-pin">
+        <Suspense fallback={null}>
+          <ShredField progress={p} still={Boolean(reduce)} />
+        </Suspense>
         <div className="hs-copy">
           {BEATS.map((b, i) => (
             <Beat key={b.title} p={p} at={b.at} first={i === 0} last={i === BEATS.length - 1}>
-              <h1 className="hs-title">{b.title}</h1>
-              {b.sub && <p className="hs-sub">{b.sub}</p>}
+              {i === 0 && enterDelay > 0 ? (
+                <>
+                  <h1 className="hs-title">
+                    <RiseWords text={b.title} delay={enterDelay} />
+                  </h1>
+                  <motion.p
+                    className="hs-sub"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: enterDelay + 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    {b.sub}
+                  </motion.p>
+                </>
+              ) : (
+                <>
+                  <h1 className="hs-title">{b.title}</h1>
+                  {b.sub && <p className="hs-sub">{b.sub}</p>}
+                </>
+              )}
               {i === BEATS.length - 1 && (
                 <>
                   <p className="hs-sub">
@@ -145,6 +172,28 @@ function Beat({
     <motion.div className="hs-beat" style={{ opacity, y, pointerEvents }}>
       {children}
     </motion.div>
+  )
+}
+
+// Each word rises out of its own mask, one after another.
+function RiseWords({ text, delay }: { text: string; delay: number }) {
+  return (
+    <>
+      {text.split(' ').map((word, i) => (
+        <Fragment key={i}>
+          <span className="hs-word">
+            <motion.span
+              className="hs-word-in"
+              initial={{ y: '105%' }}
+              animate={{ y: '0%' }}
+              transition={{ duration: 0.9, delay: delay + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {word}
+            </motion.span>
+          </span>{' '}
+        </Fragment>
+      ))}
+    </>
   )
 }
 

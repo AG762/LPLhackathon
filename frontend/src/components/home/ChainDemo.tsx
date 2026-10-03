@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { api } from '../../api/client'
 import type { AuditEntry } from '../../types'
 import { shortHash } from '../../lib/format'
+import { Rise } from './Motion'
 
 // A hands-on version of the audit log's integrity check. It runs in the browser on the latest real
 // entries (or samples): change one entry and every link after it stops matching.
@@ -74,7 +75,9 @@ export default function ChainDemo() {
   return (
     <section className="cd" aria-labelledby="chain-title">
       <div className="cd-head">
-        <h2 id="chain-title">Try to rewrite history.</h2>
+        <h2 id="chain-title">
+          <Rise lines={['Try to rewrite history.']} />
+        </h2>
         <p>
           Every entry stores the fingerprint of the one before it. Change one, and its fingerprint no longer matches the
           next link. {real ? 'These are the latest real entries from the audit log.' : 'Sample entries shown.'}

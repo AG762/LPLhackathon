@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useReducedMotion } from 'motion/react'
 import Lenis from 'lenis'
@@ -10,6 +10,8 @@ import HeroScroll, { type HeroFile } from '../components/home/HeroScroll'
 import FileRiver, { type RiverFile } from '../components/home/FileRiver'
 import BigList from '../components/home/BigList'
 import ChainDemo from '../components/home/ChainDemo'
+import Intro, { INTRO_SECONDS } from '../components/home/Intro'
+import { Magnetic, Rise } from '../components/home/Motion'
 import { pickItems, toItem, type ShredItem } from '../lib/shredItems'
 import { fileName, isOnHold } from '../lib/format'
 import { useFiles } from '../state/files'
@@ -45,6 +47,8 @@ export default function HomePage() {
   const { files, loaded, error } = useFiles()
   const reduce = useReducedMotion()
   useSmoothScroll(!reduce)
+  const [intro, setIntro] = useState(!reduce)
+  const endIntro = useCallback(() => setIntro(false), [])
 
   useEffect(() => {
     document.title = 'ShredSafe: defensible disposal for advisors'
@@ -94,6 +98,7 @@ export default function HomePage() {
 
   return (
     <div className="hp">
+      {intro && <Intro files={counts.read} onDone={endIntro} />}
       <header className="hp-nav">
         <Link className="hp-brand" to="/">
           <BrandMark />
@@ -104,18 +109,20 @@ export default function HomePage() {
           <a href="#proof">Proof</a>
           <a href="#pricing">Pricing</a>
         </nav>
-        <Link className="hp-pill" to="/dashboard">
-          Try it now
-        </Link>
+        <Magnetic>
+          <Link className="hp-pill" to="/dashboard">
+            Try it now
+          </Link>
+        </Magnetic>
       </header>
 
-      <HeroScroll cleared={(hero ?? { cleared: FALLBACK_CLEARED }).cleared} held={(hero ?? { held: FALLBACK_HELD }).held} />
+      <HeroScroll enterDelay={reduce ? 0 : INTRO_SECONDS - 0.7} cleared={(hero ?? { cleared: FALLBACK_CLEARED }).cleared} held={(hero ?? { held: FALLBACK_HELD }).held} />
 
       <FileRiver files={river} counts={counts} source={source} />
 
       <section className="hp-stakes" aria-labelledby="stakes-title">
         <h2 id="stakes-title" className="hp-h2">
-          Two ways to get records wrong.
+          <Rise lines={['Two ways to get records wrong.']} />
         </h2>
         <div className="hp-stakes-grid">
           <article>
@@ -146,7 +153,7 @@ export default function HomePage() {
       <section className="hp-live" aria-labelledby="live-title">
         <div className="hp-live-copy">
           <h2 id="live-title" className="hp-h2">
-            Watch it sort your files.
+            <Rise lines={['Watch it sort your files.']} />
           </h2>
           <p>
             These are the files in {source}, going through the same rules the portal uses. Nothing here deletes
@@ -161,9 +168,7 @@ export default function HomePage() {
 
       <section className="hp-close" id="pricing" aria-labelledby="close-title">
         <h2 id="close-title" className="hp-close-title">
-          Let go of client files.
-          <br />
-          Keep the proof.
+          <Rise lines={['Let go of client files.', 'Keep the proof.']} />
         </h2>
         <div className="hp-close-grid">
           <div>
@@ -173,9 +178,11 @@ export default function HomePage() {
             <p className="hp-close-note">
               Start with one branch. See what ShredSafe would clear, and approve nothing until you're sure.
             </p>
-            <Link className="hp-pill hp-pill-big" to="/dashboard">
-              Try it now
-            </Link>
+            <Magnetic strength={0.25}>
+              <Link className="hp-pill hp-pill-big" to="/dashboard">
+                Try it now
+              </Link>
+            </Magnetic>
           </div>
           <ul className="hp-included">
             <li>Retention rules for every common advisor document</li>
