@@ -105,6 +105,7 @@ _Last updated: 2026-10-02_
 | F.16 | Sign in / sign up / forgot password pages (UI only) | ✅ Done (PR #24; connected to Cognito by Arihant in PR #26) | Our own screens at /signin, /signup, /forgot. Calls go through one adapter (`src/auth/accountApi.ts`) that pretends in Demo mode; connecting it to Cognito is for the login owner (Arihant) |
 | F.17 | Launch-ready copy pass over the whole site (home, sign-in, portal, admin) | ✅ Done (PR #25) | Wording only: no hackathon/dev notes in the UI, consistent terms, honest claims |
 | F.18 | Admin page checks the role itself (advisors could open /admin) | 🟡 In progress (branch aryan-admin-guard) | People tab admin-only; compliance keeps holds + rules. Script side reported to Arihant |
+| D.8 | Admin API for the Admin page: `/rules`, `/holds` (place, release), `/admin/users` (invite, role, access), scoped to the caller's workspace | 🟡 In progress (branch aryan-admin-api) | Per docs/admin-api.md. PR for Arihant to review + deploy (touches handler routes, template IAM). Not merging myself |
 | — | `docs/feature-proposals.md` (P1: scan only new or changed files) | ✅ Merged (PR #17) | Team to set the Decision column; mark ✅ there if built |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
