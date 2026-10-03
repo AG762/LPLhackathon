@@ -12,6 +12,7 @@ import UploadPage from './pages/Upload'
 import DashboardPage from './pages/Dashboard'
 import AuditPage from './pages/Audit'
 import AdminPage from './pages/Admin'
+import AccountPage from './pages/Account'
 import { ForgotPasswordPage, SignInPage, SignUpPage } from './pages/Auth'
 import HomePage from './pages/Home'
 import { BrandMark } from './components/BrandMark'
@@ -48,10 +49,10 @@ function Sidebar() {
         {signInEnabled ? (
           <SignedInUser />
         ) : (
-          <div className="advisor">
+          <Link className="advisor advisor-link" to="/account" title="Your account">
             <div className="advisor-name">{DEMO_ADVISOR.name}</div>
             <div className="muted">{DEMO_ADVISOR.branch}</div>
-          </div>
+          </Link>
         )}
         <div>
           <div className="muted mode-label" id="mode-label" style={{ marginBottom: 6 }}>
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/account" element={<AccountPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
