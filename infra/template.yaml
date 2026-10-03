@@ -222,6 +222,10 @@ Resources:
       AutoVerifiedAttributes: [email]
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: !If [SignUpAllowed, false, true] # AllowSignUp parameter
+      AccountRecoverySetting: # "Forgot password" codes go to the verified email (never SMS; there's no phone)
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
       MfaConfiguration: OPTIONAL
       EnabledMfas: [SOFTWARE_TOKEN_MFA]
       Policies:
