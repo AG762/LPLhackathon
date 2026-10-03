@@ -13,6 +13,10 @@
 
 export class AccountError extends Error {}
 
+// True while the calls below only pretend. Set to false once they talk to Cognito; the screens then drop
+// their "Preview" note.
+export const ACCOUNTS_ARE_PREVIEW = true
+
 export interface SignUpInput {
   name: string
   email: string

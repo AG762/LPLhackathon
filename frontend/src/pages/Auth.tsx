@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { BrandMark } from '../components/BrandMark'
-import { AccountError, PASSWORD_RULES, accountApi } from '../auth/accountApi'
+import { ACCOUNTS_ARE_PREVIEW, AccountError, PASSWORD_RULES, accountApi } from '../auth/accountApi'
 import { useToast } from '../state/toast'
 import './auth.css'
 
@@ -58,7 +58,9 @@ function AuthLayout({ children, aside }: { children: ReactNode; aside: string })
           ShredSafe
         </Link>
         <div className="au-card">{children}</div>
-        <p className="au-foot">Hackathon demo. Use any email; nothing is sent.</p>
+        {ACCOUNTS_ARE_PREVIEW && (
+          <p className="au-foot">Preview: accounts aren't created yet and no email is sent. Any details will work.</p>
+        )}
       </main>
     </div>
   )

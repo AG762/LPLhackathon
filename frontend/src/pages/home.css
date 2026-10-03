@@ -1425,6 +1425,22 @@ html.lenis body {
   display: inline-block;
 }
 
+/* Close: the pilot pill, with a quieter way into the sample workspace beside it. */
+.hp-close-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 22px;
+}
+
+.hp-close-alt {
+  color: inherit;
+  font-size: 0.95rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
 /* Sign in sits beside the pill; it inherits the nav's blend so it reads on dark and light. */
 .hp-nav-end {
   justify-self: end;

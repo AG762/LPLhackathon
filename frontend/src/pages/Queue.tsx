@@ -518,12 +518,12 @@ function Row({ ref, file: f, selected, expanded, busy, movedBy, fresh, onSeen, o
         <Sign level="hold" compact className="hold-sign">
           {f.clientName ? (
             <>
-              Files for <strong>{f.clientName}</strong> are under a legal hold.
+              <strong>{f.clientName}</strong> is under a legal hold, so this file is kept
             </>
           ) : (
-            'This file is under a legal hold.'
+            'This file is under a legal hold, so it is kept'
           )}{' '}
-          It's preserved until Compliance releases the hold, regardless of its retention date.
+          until compliance releases the hold, whatever its retention date says.
         </Sign>
       )}
 

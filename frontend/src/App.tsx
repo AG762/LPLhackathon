@@ -44,19 +44,19 @@ function Sidebar() {
         </div>
         <div>
           <div className="muted mode-label" id="mode-label" style={{ marginBottom: 6 }}>
-            Data source
+            Workspace data
           </div>
           <div className="mode-switch" role="group" aria-labelledby="mode-label">
             <button type="button" aria-pressed={mode === 'mock'} onClick={() => choose('mock')}>
               <span className="mode-dot" aria-hidden="true" />
-              Demo
+              Sample
             </button>
             <button type="button" aria-pressed={mode === 'live'} onClick={() => choose('live')}>
               <span className="mode-dot" aria-hidden="true" />
-              Live API
+              Live
             </button>
           </div>
-          <p className="mode-now">{mode === 'live' ? 'Showing live data from AWS' : 'Showing built-in demo data'}</p>
+          <p className="mode-now">{mode === 'live' ? 'Showing your files' : 'Showing sample files for a demo branch'}</p>
         </div>
       </div>
     </aside>
