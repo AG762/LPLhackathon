@@ -25,8 +25,14 @@ Parameters:
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: When true, every API call needs a Cognito sign-in token (docs/login.md). Off keeps the demo advisor and accepts tokens if sent.
+  AllowSignUp:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Anyone can create an account on the sign-in page (independent advisors). New accounts become advisors and see only their own files. false = invite-only (scripts/create_user.py).
 
 Conditions:
+  SignUpAllowed: !Equals [!Ref AllowSignUp, "true"]
   FrontendIsLocalhost: !Equals [!Sub "${FrontendOrigin}${FrontendBasePath}", "http://localhost:5173/"]
 
 Globals:
@@ -215,7 +221,7 @@ Resources:
       UsernameAttributes: [email]
       AutoVerifiedAttributes: [email]
       AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true # no self sign-up: compliance creates accounts
+        AllowAdminCreateUserOnly: !If [SignUpAllowed, false, true] # AllowSignUp parameter
       MfaConfiguration: OPTIONAL
       EnabledMfas: [SOFTWARE_TOKEN_MFA]
       Policies:
@@ -250,6 +256,25 @@ Resources:
       IdTokenValidity: 1
       RefreshTokenValidity: 1
       TokenValidityUnits: { AccessToken: hours, IdToken: hours, RefreshToken: days }
+
+  SignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/signup
+      Handler: handler.main
+      Timeout: 5 # Cognito waits at most 5 s for a trigger
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: cognito-idp:AdminAddUserToGroup
+              # Wildcard pool: naming UserPool here would be circular (the pool already points at this function)
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+      Events:
+        PostConfirmation:
+          Type: Cognito
+          Properties:
+            UserPool: !Ref UserPool
+            Trigger: PostConfirmation
 
   AdvisorGroup:
     Type: AWS::Cognito::UserPoolGroup

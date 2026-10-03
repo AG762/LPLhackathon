@@ -29,12 +29,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return (
       <Centered>
         <h2>Sign in to ShredSafe</h2>
-        <p>Use the account your compliance team set up for you.</p>
+        <p>New here? Choose <strong>Sign up</strong> on the next page to create a free advisor account.</p>
         {auth.error && (
           <p role="alert">Sign-in didn't complete: {auth.error.message}</p>
         )}
         <button type="button" className="btn btn-primary" onClick={() => void auth.signinRedirect()}>
-          Sign in
+          Sign in or sign up
         </button>
       </Centered>
     )

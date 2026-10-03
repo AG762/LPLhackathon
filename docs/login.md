@@ -22,6 +22,10 @@ This doc is also the answer to "how would users log in?" on stage.
   Uploads without sign-in carry no owner, so the demo and older frontends work unchanged.
 - Frontend: `src/auth/` (`react-oidc-context`). Sign-in screen in Live mode when `VITE_COGNITO_*` are set; the ID
   token goes on every API call; a 401 sends you to sign in again; the sidebar shows the email, role and **Sign out**.
+- **Self sign-up** (`AllowSignUp`, default on): any independent advisor can create an account from the sign-in page and
+  confirms their email with a code. `backend/signup/` (post-confirmation trigger) adds every new account to `advisor`,
+  so it can use the app straight away; per-advisor visibility means it starts with an empty queue.
+  `AllowSignUp=false` makes a stack invite-only.
 - Scripts: `create_user.py` (accounts, `--password` for test accounts), `frontend_env.py` (frontend settings from a stack).
 - Tests: `backend/tests/test_auth.py`.
 
@@ -30,6 +34,9 @@ This doc is also the answer to "how would users log in?" on stage.
 - The Audit page labels the last entry *it shows* as the chain head; for a filtered (per-advisor) list that's the
   advisor's latest entry, not the true head. Cosmetic; the integrity check itself uses the whole chain.
 - Files uploaded before sign-in have no owner, so no signed-in user sees them.
+- **Open sign-up limits before real use:** Cognito's built-in email sender allows about 50 emails a day (sign-up codes,
+  password resets); production needs Amazon SES. Anyone can sign up and upload, so add per-account upload quotas
+  and bot protection (e.g. Cognito threat protection or a CAPTCHA) before opening it to the public.
 
 ## Today
 
@@ -91,7 +98,7 @@ Without sign-in (`AuthRequired=false`, no token) the demo user still sees everyt
       UserPoolName: !Sub "${AWS::StackName}-users"
       UsernameAttributes: [email]
       AutoVerifiedAttributes: [email]
-      AdminCreateUserConfig: { AllowAdminCreateUserOnly: true }   # no self sign-up
+      AdminCreateUserConfig: { AllowAdminCreateUserOnly: false }  # self sign-up (AllowSignUp parameter)
       MfaConfiguration: OPTIONAL
       EnabledMfas: [SOFTWARE_TOKEN_MFA]
       Policies:
