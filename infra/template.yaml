@@ -239,7 +239,11 @@ Resources:
     Properties:
       UserPoolId: !Ref UserPool
       ClientName: web
-      GenerateSecret: false # browser app: authorization code + PKCE, no secret
+      GenerateSecret: false # browser app: no secret
+      # The app's own sign-in forms (frontend/src/auth) talk to Cognito directly: SRP keeps the password
+      # off the wire, refresh tokens keep people signed in. The OAuth settings below are kept for SSO later.
+      ExplicitAuthFlows: [ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+      PreventUserExistenceErrors: ENABLED # sign-in and password reset don't reveal which emails have accounts
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthFlows: [code]
       AllowedOAuthScopes: [openid, email, profile]
@@ -256,30 +260,6 @@ Resources:
       IdTokenValidity: 1
       RefreshTokenValidity: 1
       TokenValidityUnits: { AccessToken: hours, IdToken: hours, RefreshToken: days }
-
-  # Cognito's sign-in / sign-up page in the app's colours. Cognito only accepts its own *-customizable
-  # classes and a short list of properties (a wrong one fails the deploy), so this sticks to the
-  # properties in AWS's example stylesheet. Applies to the classic hosted UI (ManagedLoginVersion 1).
-  SignInPageStyle:
-    Type: AWS::Cognito::UserPoolUICustomizationAttachment
-    DependsOn: UserPoolDomain
-    Properties:
-      UserPoolId: !Ref UserPool
-      ClientId: !Ref WebClient
-      CSS: >-
-        .background-customizable { background-color: #f3f4f6; }
-        .banner-customizable { padding: 24px 0px 18px 0px; background-color: #0a0e14; }
-        .label-customizable { font-weight: 600; color: #0a0e14; }
-        .textDescription-customizable { padding-top: 10px; padding-bottom: 10px; display: block; font-size: 15px; color: #4b5563; }
-        .inputField-customizable { width: 100%; height: 44px; color: #0a0e14; background-color: #ffffff; border-color: #c9ced6; }
-        .inputField-customizable:focus { border-color: #3d5a86; outline-color: #3d5a86; }
-        .submitButton-customizable { font-size: 15px; font-weight: 600; margin: 20px 0px 0px 0px; height: 46px; width: 100%; color: #ffffff; background-color: #0a0e14; }
-        .submitButton-customizable:hover { color: #ffffff; background-color: #1d2633; }
-        .errorMessage-customizable { padding: 10px; margin: 10px 0px; font-size: 14px; width: 100%; color: #b42318; border: 1px solid #f3c7c2; background-color: #fdf1f0; }
-        .redirect-customizable { text-align: center; }
-        .legalText-customizable { color: #6b7280; font-size: 12px; }
-        .passwordCheck-notValid-customizable { color: #b42318; }
-        .passwordCheck-valid-customizable { color: #3d5a86; }
 
   SignUpFunction:
     Type: AWS::Serverless::Function

@@ -8,7 +8,7 @@ This doc is also the answer to "how would users log in?" on stage.
 
 - `infra/template.yaml`: user pool (email sign-in, admin-created users only, optional TOTP MFA, 12+ char passwords),
   sign-in domain, `web` app client (code + PKCE, no secret, 1 h tokens), groups `advisor` / `compliance` / `admin`,
-  `Authorization` allowed by CORS, parameters `AuthRequired` and `FrontendBasePath`, outputs `UserPoolId`,
+  `ALLOW_USER_SRP_AUTH` + refresh for the app's own forms, `PreventUserExistenceErrors`, `Authorization` allowed by CORS, parameters `AuthRequired` and `FrontendBasePath`, outputs `UserPoolId`,
   `UserPoolClientId`, `CognitoAuthority`, `CognitoDomain`.
 - `backend/api/auth.py` + `handler.dispatch`: every route checks the caller before running. The API takes the Cognito
   **ID token** (it carries the email; with email sign-in the access token's username is a random id), checked for
@@ -20,8 +20,11 @@ This doc is also the answer to "how would users log in?" on stage.
   files (others' files are 404) whatever their role; dashboard, audit list, certificate and scan results cover only
   their files. `/audit/verify` still checks the whole chain but only answers ok / broken-at.
   Uploads without sign-in carry no owner, so the demo and older frontends work unchanged.
-- Frontend: `src/auth/` (`react-oidc-context`). Sign-in screen in Live mode when `VITE_COGNITO_*` are set; the ID
-  token goes on every API call; a 401 sends you to sign in again; the sidebar shows the email, role and **Sign out**.
+- Frontend: `src/auth/`. **ShredSafe's own sign-in and sign-up forms** (no trip to a Cognito-hosted page), talking
+  to Cognito through Amplify Auth (SRP, so the password never crosses the wire): sign in, create account, email
+  code, resend code, forgot password, new-password-required and authenticator-code steps. Shown in Live mode when
+  `VITE_COGNITO_USER_POOL_ID` and `VITE_COGNITO_CLIENT_ID` are set; the ID token goes on every API call (refreshed
+  automatically); a 401 signs you out locally; the sidebar shows the email, role and **Sign out**.
 - **Self sign-up** (`AllowSignUp`, default on): any independent advisor can create an account from the sign-in page and
   confirms their email with a code. `backend/signup/` (post-confirmation trigger) adds every new account to `advisor`,
   so it can use the app straight away; per-advisor visibility means it starts with an empty queue.

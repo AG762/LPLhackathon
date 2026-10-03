@@ -267,15 +267,13 @@ def test_frontend_env_script_maps_stack_outputs():
     import frontend_env
 
     outputs = [{"OutputKey": k, "OutputValue": v} for k, v in {
-        "ApiUrl": "https://abc.lambda-url.us-east-1.on.aws/", "CognitoAuthority": ISSUER,
-        "UserPoolClientId": CLIENT, "CognitoDomain": "https://shredsafe-login-1.auth.us-east-1.amazoncognito.com",
-        "BucketName": "ignored"}.items()]
+        "ApiUrl": "https://abc.lambda-url.us-east-1.on.aws/", "UserPoolId": POOL,
+        "UserPoolClientId": CLIENT, "BucketName": "ignored"}.items()]
     assert frontend_env.env_lines(outputs) == [
-        "VITE_API_URL=https://abc.lambda-url.us-east-1.on.aws", f"VITE_COGNITO_AUTHORITY={ISSUER}",
-        f"VITE_COGNITO_CLIENT_ID={CLIENT}", "VITE_COGNITO_DOMAIN=https://shredsafe-login-1.auth.us-east-1.amazoncognito.com",
-        "VITE_API_MODE=live", "VITE_DEMO_CONTROLS=true"]
-    with pytest.raises(SystemExit, match="CognitoDomain"):
-        frontend_env.env_lines(outputs[:3])
+        "VITE_API_URL=https://abc.lambda-url.us-east-1.on.aws", f"VITE_COGNITO_USER_POOL_ID={POOL}",
+        f"VITE_COGNITO_CLIENT_ID={CLIENT}", "VITE_API_MODE=live", "VITE_DEMO_CONTROLS=true"]
+    with pytest.raises(SystemExit, match="UserPoolClientId"):
+        frontend_env.env_lines(outputs[:2])
 
 
 def test_audit_log_shows_only_your_files_and_actions(two_advisors, required):

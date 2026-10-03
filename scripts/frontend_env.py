@@ -13,9 +13,8 @@ import boto3
 
 KEYS = {
     "ApiUrl": "VITE_API_URL",
-    "CognitoAuthority": "VITE_COGNITO_AUTHORITY",
+    "UserPoolId": "VITE_COGNITO_USER_POOL_ID",
     "UserPoolClientId": "VITE_COGNITO_CLIENT_ID",
-    "CognitoDomain": "VITE_COGNITO_DOMAIN",
 }
 
 

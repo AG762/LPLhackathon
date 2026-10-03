@@ -272,3 +272,119 @@
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+
+/* ---------- forms ---------- */
+
+.signin-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 28px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--layer);
+}
+
+.signin-tabs button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.signin-tabs button[aria-pressed='true'] {
+  background: var(--ground);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgb(10 14 20 / 0.12);
+}
+
+.signin-tabs button:focus-visible,
+.signin-link:focus-visible,
+.field input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.field label {
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--ground);
+  color: var(--ink);
+  font: inherit;
+  transition: border-color 0.15s var(--ease-out);
+}
+
+.field input:hover {
+  border-color: var(--ink-2);
+}
+
+.field input:focus {
+  border-color: var(--ink);
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.82rem;
+}
+
+.signin-forgot {
+  margin: -6px 0 20px;
+  text-align: right;
+  font-size: 0.88rem;
+}
+
+.signin-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.signin-link:hover {
+  text-decoration-color: var(--notice);
+}
+
+.signin-link:disabled {
+  color: var(--ink-2);
+  cursor: wait;
+}
+
+.signin-info {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--notice);
+  border-radius: 6px;
+  background: var(--notice-wash);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.signin-card .btn .signin-spinner {
+  border-color: rgb(255 255 255 / 0.35);
+  border-top-color: #fff;
+}

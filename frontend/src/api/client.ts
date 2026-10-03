@@ -61,16 +61,22 @@ export function setMode(mode: ApiMode) {
 
 // Sign-in (docs/login.md): AuthBridge in App.tsx registers how to get the access token and what to do on a 401.
 // Without sign-in configured both stay no-ops and requests go out without a token, as before.
-let getToken: () => string | undefined = () => undefined
+type TokenGetter = () => Promise<string | undefined> | string | undefined
+let getToken: TokenGetter = () => undefined
 let onUnauthorized: () => void = () => {}
 
-export function configureAuth(opts: { getToken: () => string | undefined; onUnauthorized: () => void }) {
+export function configureAuth(opts: { getToken: TokenGetter; onUnauthorized: () => void }) {
   getToken = opts.getToken
   onUnauthorized = opts.onUnauthorized
 }
 
-function authHeaders(): Record<string, string> {
-  const token = getToken()
+async function authHeaders(): Promise<Record<string, string>> {
+  let token: string | undefined
+  try {
+    token = await getToken()
+  } catch {
+    token = undefined // no session: the API answers 401 if it needs one
+  }
   return token ? { authorization: `Bearer ${token}` } : {}
 }
 
@@ -80,7 +86,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       method,
-      headers: { ...authHeaders(), ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
+      headers: { ...(await authHeaders()), ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch {
@@ -156,7 +162,7 @@ const liveApi: Api = {
   },
   certificate: async () => {
     if (!BASE_URL) throw new ApiError(0, 'VITE_API_URL is not set.')
-    const res = await fetch(`${BASE_URL}/certificate`, { headers: authHeaders() })
+    const res = await fetch(`${BASE_URL}/certificate`, { headers: await authHeaders() })
     if (res.status === 401) onUnauthorized()
     if (!res.ok) {
       let message = res.status === 501 ? 'Not built on the backend yet: certificate' : `Certificate failed (${res.status})`
