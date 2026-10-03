@@ -271,7 +271,7 @@ export default function QueuePage() {
           </span>
           {heldCount > 0 && (
             <span className="summary-item">
-              <Chip level="danger">
+              <Chip level="hold">
                 <span className="num">{heldCount}</span> ON LEGAL HOLD
               </Chip>
               preserved
@@ -515,7 +515,7 @@ function Row({ ref, file: f, selected, expanded, busy, movedBy, fresh, onSeen, o
       </div>
 
       {held && f.status === 'PENDING' && (
-        <Sign level="danger" word="LEGAL HOLD" compact className="hold-sign">
+        <Sign level="hold" compact className="hold-sign">
           {f.clientName ? (
             <>
               Files for <strong>{f.clientName}</strong> are under a legal hold.
@@ -574,7 +574,7 @@ function Priority({ file: f }: { file: FileRecord }) {
 }
 
 function RecommendationTag({ file: f }: { file: FileRecord }) {
-  if (isOnHold(f)) return <Chip level="danger">LEGAL HOLD</Chip>
+  if (isOnHold(f)) return <Chip level="hold">LEGAL HOLD</Chip>
   switch (f.status) {
     case 'QUARANTINED':
       return <Chip level="ghost">In grace period</Chip>

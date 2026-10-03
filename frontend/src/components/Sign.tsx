@@ -1,53 +1,61 @@
 import type { ReactNode } from 'react'
 
-export type SignLevel = 'danger' | 'warning' | 'caution' | 'notice' | 'safe'
+// Callouts and status pills. Calm by default; colour only where it carries meaning:
+// a legal hold is solid ink with a lock, a failure is the alert red, "notice" takes the steel accent.
+export type SignLevel = 'hold' | 'danger' | 'warning' | 'caution' | 'notice' | 'safe'
 
 const SIGNAL_WORDS: Record<SignLevel, string> = {
-  danger: 'DANGER',
-  warning: 'WARNING',
-  caution: 'CAUTION',
-  notice: 'NOTICE',
-  safe: 'SAFE',
+  hold: 'LEGAL HOLD',
+  danger: 'ACTION BLOCKED',
+  warning: 'HEADS UP',
+  caution: 'CHECK THIS',
+  notice: 'NOTE',
+  safe: 'ALL CLEAR',
 }
 
-// ANSI safety alert symbol: a triangle with an exclamation mark. Drawn, not a glyph.
-// On light bands (warning, caution) the triangle is black and the mark takes the band colour.
-export function AlertSymbol({ inverse = false }: { inverse?: boolean }) {
+const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
+
+export function AlertSymbol() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2.5 23 21.5H1z" fill={inverse ? '#000' : '#fff'} />
-      <g className={inverse ? 'alert-mark-inverse' : 'alert-mark'}>
-        <rect x="10.6" y="8.6" width="2.8" height="6.8" />
-        <rect x="10.6" y="16.8" width="2.8" height="2.6" />
-      </g>
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+      <path d="M12 3.5 21.5 20h-19z" />
+      <path d="M12 10v4.5M12 17.2v.1" />
     </svg>
   )
 }
 
 export function CheckSymbol() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="11" fill="#fff" />
-      <path d="m6.5 12.5 3.6 3.6 7.4-8" fill="none" stroke="#000" strokeWidth="2.8" strokeLinecap="square" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+      <circle cx="12" cy="12" r="9.2" />
+      <path d="m8 12.4 2.7 2.7L16.2 9.3" />
     </svg>
   )
 }
 
 export function InfoSymbol() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="11" fill="#fff" />
-      <rect x="10.6" y="10" width="2.8" height="8" fill="#000" />
-      <rect x="10.6" y="5.6" width="2.8" height="2.8" fill="#000" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+      <circle cx="12" cy="12" r="9.2" />
+      <path d="M12 11v5.5M12 7.6v.1" />
+    </svg>
+  )
+}
+
+export function LockSymbol() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+      <rect x="5" y="10.5" width="14" height="10" rx="2.2" />
+      <path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5" />
     </svg>
   )
 }
 
 function Symbol({ level }: { level: SignLevel }) {
+  if (level === 'hold') return <LockSymbol />
   if (level === 'safe') return <CheckSymbol />
   if (level === 'notice') return <InfoSymbol />
-  // Black-on-colour bands (warning, caution) use a black triangle with a white mark.
-  return <AlertSymbol inverse={level === 'warning' || level === 'caution'} />
+  return <AlertSymbol />
 }
 
 interface SignProps {
@@ -81,7 +89,8 @@ export function Chip({
   symbol?: boolean
   title?: string
 }) {
-  const showSymbol = symbol && level !== 'plain' && level !== 'solid' && level !== 'ghost'
+  // Pills stay quiet: only a hold (lock) and a real problem (alert) carry an icon.
+  const showSymbol = symbol && (level === 'hold' || level === 'danger')
   return (
     <span className={`chip chip-${level}`} title={title}>
       {showSymbol && <Symbol level={level as SignLevel} />}

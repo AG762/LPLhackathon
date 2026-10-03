@@ -1,39 +1,40 @@
-/* ShredSafe: Safety Sign Standard.
-   Hazards are posted the way safety signs post them (ANSI Z535 signal words), and only where a file
-   truly can't be deleted. Exposure (how much client data a file holds) is a navy meter, never a
-   hazard colour. The shell is navy, close to the advisor portal it lives in. */
+/* ShredSafe portal. Matches the home page: a deep ink rail, light working surfaces, Geist, pill
+   controls and hairline rules. Colour is kept for meaning only: a legal hold is a solid ink pill with a
+   lock, a failure is the one alert red, and "needs review" takes the cool steel accent. */
 
 :root {
   /* neutrals */
   --ground: #ffffff;
-  --layer: #f2f3f4;
-  --layer-strong: #e4e6e8;
-  --ink: #111214;
-  --ink-2: #4a4f57; /* secondary text, 8.3:1 on white */
-  --rule: #d4d7db;
-  --rule-strong: #111214;
-  --rail: #0e2841;
-  --rail-hover: #17375a;
-  --rail-ink: #ffffff;
-  --rail-ink-2: #b4c2d3;
-  --primary: #0e2841;
-  --primary-hover: #1a3d61;
+  --layer: #f3f4f6;
+  --layer-strong: #e6e9ed;
+  --ink: #0a0e14;
+  --ink-2: #4b5563; /* secondary text, 7.6:1 on white */
+  --rule: #e3e6ea;
+  --rule-strong: #0a0e14;
+  --rail: #070b12;
+  --rail-hover: rgb(255 255 255 / 0.06);
+  --rail-ink: #f2f4f7;
+  --rail-ink-2: #9ba5b3;
+  --primary: #0a0e14;
+  --primary-hover: #1d2633;
 
-  /* safety colours (Z535) */
-  --danger: #c8102e;
-  --danger-wash: #fbe9ec;
-  --warning: #e87722;
-  --caution: #ffd100;
-  --notice: #0057b8;
-  --notice-wash: #e8f0fa;
-  --safe: #007a4d;
-  --safe-wash: #e6f3ed;
+  /* meaning colours (names kept so page styles keep working) */
+  --danger: #b42318;
+  --danger-wash: #fdf1f0;
+  --warning: #0a0e14;
+  --caution: #0a0e14;
+  --notice: #3d5a86;
+  --notice-wash: #eef3fb;
+  --safe: #0a0e14;
+  --safe-wash: #f3f4f6;
+  --glow: #cfe2ff;
 
-  --focus: #0057b8;
+  --focus: #3d5a86;
 
-  --font-sign: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  --font-ui: 'Barlow', system-ui, sans-serif;
+  --font-sign: 'Geist Variable', system-ui, sans-serif;
+  --font-ui: 'Geist Variable', system-ui, sans-serif;
 
+  --radius: 14px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* z-index scale */
@@ -63,7 +64,7 @@ body {
 }
 
 ::selection {
-  background: #cfe0f5;
+  background: var(--glow);
   color: var(--ink);
 }
 
@@ -77,19 +78,22 @@ h3 {
 }
 
 h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-size: 2.4rem;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
 }
 
 h2 {
-  font-size: 1.375rem;
-  font-weight: 700;
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
 }
 
 h3 {
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 p {
@@ -111,7 +115,7 @@ select {
 
 a {
   color: var(--ink);
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
@@ -140,16 +144,18 @@ a:hover {
 
 .shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 248px 1fr;
   min-height: 100vh;
   /* paint the rail column full height, so long pages never show the rail ending */
-  background: linear-gradient(90deg, var(--rail) 240px, var(--ground) 240px);
+  background: linear-gradient(90deg, var(--rail) 248px, var(--ground) 248px);
 }
 
 .sidebar {
-  background: var(--rail);
+  background:
+    radial-gradient(120% 40% at 0% 0%, rgb(207 226 255 / 0.08), transparent 70%),
+    var(--rail);
   color: var(--rail-ink);
-  padding: 24px 0;
+  padding: 24px 0 20px;
   display: flex;
   flex-direction: column;
   gap: 32px;
@@ -163,35 +169,43 @@ a:hover {
   align-items: center;
   gap: 10px;
   padding: 0 24px;
-  font-family: var(--font-sign);
-  font-weight: 800;
-  font-size: 1.6rem;
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
   line-height: 1;
   color: var(--rail-ink);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: #fff;
 }
 
 .brand-mark {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   flex: none;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  padding: 0 12px;
 }
 
 .nav a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 11px 24px;
+  padding: 9px 12px 9px 14px;
+  border-radius: 999px;
   color: var(--rail-ink-2);
   text-decoration: none;
-  font-family: var(--font-sign);
-  font-weight: 700;
-  font-size: 1.15rem;
-  transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  transition: color 200ms var(--ease-out), background-color 200ms var(--ease-out);
 }
 
 .nav a:hover {
@@ -200,30 +214,31 @@ a:hover {
 }
 
 .nav a.active {
-  background: var(--rail-ink);
-  color: var(--rail);
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
 .nav a:focus-visible {
-  outline-color: var(--rail-ink);
-  outline-offset: -3px;
+  outline: 2px solid var(--glow);
+  outline-offset: -2px;
 }
 
 .nav-count {
   margin-left: 10px;
-  min-width: 26px;
-  padding: 0 6px;
-  font-family: var(--font-ui);
-  font-size: 0.8rem;
-  font-weight: 700;
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-align: center;
-  background: var(--rail-ink);
-  color: var(--rail);
+  background: rgb(255 255 255 / 0.12);
+  color: var(--rail-ink);
 }
 
 .nav a.active .nav-count {
-  background: var(--rail);
-  color: var(--rail-ink);
+  background: #fff;
+  color: var(--rail);
 }
 
 .sidebar-foot {
@@ -231,12 +246,13 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 0 24px;
-  font-size: 0.88rem;
+  padding: 18px 24px 0;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  font-size: 0.86rem;
 }
 
 .advisor-name {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--rail-ink);
 }
 
@@ -248,33 +264,39 @@ a:hover {
 .mode-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border: 2px solid var(--rail-ink);
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.12);
 }
 
 .mode-switch button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 7px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
   color: var(--rail-ink-2);
   padding: 6px 10px;
   cursor: pointer;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 500;
-  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+  transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
 }
 
 .mode-switch button:hover {
   color: var(--rail-ink);
 }
 
-/* The chosen source is the filled one, with a dot; the other stays faded so it reads as "off". */
+/* The chosen source is the solid white pill with a filled dot; the other stays faded so it reads as "off". */
 .mode-switch button[aria-pressed='true'] {
-  background: var(--rail-ink);
+  background: #fff;
   color: var(--rail);
-  font-weight: 700;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
 }
 
 .mode-dot {
@@ -286,21 +308,25 @@ a:hover {
 }
 
 .mode-switch button[aria-pressed='true'] .mode-dot {
-  background: currentColor;
+  width: 8px;
+  height: 8px;
+  border-color: var(--rail);
+  background: var(--rail);
 }
 
 .mode-now {
-  margin-top: 6px;
-  font-size: 0.78rem;
+  margin-top: 8px;
+  font-size: 0.76rem;
   color: var(--rail-ink-2);
 }
 
 .mode-switch button:focus-visible {
-  outline-color: var(--rail-ink);
+  outline: 2px solid var(--glow);
+  outline-offset: 1px;
 }
 
 .main {
-  padding: 36px 48px 72px;
+  padding: 40px 48px 72px;
   min-width: 0;
 }
 
@@ -309,14 +335,14 @@ a:hover {
   justify-content: space-between;
   align-items: flex-end;
   gap: 24px;
-  padding-bottom: 20px;
-  margin-bottom: 24px;
-  border-bottom: 2px solid var(--rule-strong);
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--rule);
   flex-wrap: wrap;
 }
 
 .page-head p {
-  margin-top: 8px;
+  margin-top: 10px;
   color: var(--ink-2);
   max-width: 64ch;
 }
@@ -334,13 +360,11 @@ a:hover {
     flex-wrap: wrap;
     align-items: center;
     gap: 12px;
-    padding: 14px 16px 0;
+    padding: 14px 16px 10px;
+    min-width: 0;
   }
   .brand {
     padding: 0;
-  }
-  .sidebar {
-    min-width: 0;
   }
   .nav {
     flex-direction: row;
@@ -348,16 +372,18 @@ a:hover {
     flex: 0 0 calc(100% + 32px);
     min-width: 0;
     margin: 0 -16px;
+    padding: 0 12px;
     overflow-x: auto;
     scrollbar-width: none;
   }
   .nav a {
-    padding: 10px 14px;
+    padding: 8px 14px;
     white-space: nowrap;
   }
   .sidebar-foot {
     margin: 0 0 0 auto;
     padding: 0;
+    border: 0;
     flex-direction: row;
     align-items: center;
   }
@@ -367,7 +393,7 @@ a:hover {
     display: none;
   }
   .main {
-    padding: 24px 16px 56px;
+    padding: 28px 16px 56px;
   }
   h1 {
     font-size: 2rem;
@@ -381,25 +407,29 @@ a:hover {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 38px;
-  padding: 7px 16px;
-  border: 2px solid var(--ink);
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 1px solid rgb(10 14 20 / 0.18);
+  border-radius: 999px;
   background: var(--ground);
   color: var(--ink);
-  font-weight: 600;
-  font-size: 0.92rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
-  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), transform 150ms var(--ease-out);
+  transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out), border-color 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
 }
 
 .btn:hover:not(:disabled) {
   background: var(--layer);
+  border-color: rgb(10 14 20 / 0.3);
 }
 
 .btn:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 
 .btn:disabled {
@@ -411,7 +441,7 @@ a:hover {
 .btn-primary {
   background: var(--primary);
   border-color: var(--primary);
-  color: var(--ground);
+  color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -421,12 +451,14 @@ a:hover {
 
 .btn-primary:disabled {
   background: var(--layer-strong);
+  border-color: var(--layer-strong);
+  color: #6b7280;
 }
 
 .btn-small {
   min-height: 32px;
-  padding: 4px 12px;
-  font-size: 0.85rem;
+  padding: 4px 14px;
+  font-size: 0.84rem;
 }
 
 .btn-quiet {
@@ -438,6 +470,7 @@ a:hover {
 
 .btn-quiet:hover:not(:disabled) {
   background: transparent;
+  border-color: transparent;
   text-decoration-color: var(--notice);
 }
 
@@ -458,20 +491,22 @@ a:hover {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  background: var(--ink);
-  color: var(--ground);
-  padding: 12px 16px 12px 12px;
-  font-size: 0.92rem;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.22);
+  background: var(--rail);
+  color: var(--rail-ink);
+  padding: 12px 18px 12px 12px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.28), inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
 .toast-mark {
   flex: none;
   width: 22px;
   height: 22px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--safe);
+  background: rgb(255 255 255 / 0.14);
 }
 
 .toast.error .toast-mark {
@@ -487,7 +522,9 @@ a:hover {
 
 .panel {
   background: var(--ground);
-  border: 2px solid var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgb(10 14 20 / 0.04);
 }
 
 .empty {
@@ -505,149 +542,148 @@ a:hover {
   margin-top: 18px;
 }
 
-/* ---------- signs (ANSI Z535 format: signal-word band over a message panel) ---------- */
+/* ---------- callouts (components/Sign.tsx) ---------- */
 
 .sign {
-  border: 2px solid #000;
-  background: var(--ground);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   max-width: 76ch;
+  padding: 14px 18px 15px;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+  background: var(--layer);
+  color: var(--ink);
 }
 
 .sign-band {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 5px 12px;
-  font-family: var(--font-sign);
-  font-weight: 800;
-  font-size: 1.15rem;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
+  gap: 8px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
 }
 
 .sign-band svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   flex: none;
 }
 
 .sign-body {
-  padding: 10px 14px 12px;
-  font-size: 0.95rem;
+  font-size: 0.93rem;
+  line-height: 1.55;
 }
 
 .sign-body strong {
-  font-weight: 700;
+  font-weight: 600;
+}
+
+/* A hold is the one thing that must never be missed: solid ink, white text, a lock. */
+.sign-hold {
+  background: var(--rail);
+  border-color: var(--rail);
+  color: var(--rail-ink);
+}
+
+.sign-hold .sign-body {
+  color: #c9d0da;
+}
+
+.sign-hold .sign-body strong {
+  color: #fff;
+}
+
+.sign-danger {
+  background: var(--danger-wash);
+  border-color: #f2c4bf;
 }
 
 .sign-danger .sign-band {
-  background: var(--danger);
-  color: #fff;
+  color: var(--danger);
 }
 
-.sign-warning .sign-band {
-  background: var(--warning);
-  color: #000;
-}
-
-.sign-caution .sign-band {
-  background: var(--caution);
-  color: #000;
+.sign-notice {
+  background: var(--notice-wash);
+  border-color: #d6e2f3;
 }
 
 .sign-notice .sign-band {
-  background: var(--notice);
-  color: #fff;
+  color: var(--notice);
 }
 
-.sign-safe .sign-band {
-  background: var(--safe);
-  color: #fff;
+.sign-safe {
+  background: var(--ground);
 }
 
-.sign-compact .sign-band {
-  font-size: 0.95rem;
-  padding: 3px 10px;
+.sign-compact {
+  padding: 11px 16px 12px;
 }
 
 .sign-compact .sign-body {
-  padding: 8px 12px 10px;
   font-size: 0.9rem;
 }
 
-.alert-mark {
-  fill: #000;
-}
-
-.sign-danger .alert-mark,
-.chip-danger .alert-mark {
-  fill: var(--danger);
-}
-
-.sign-warning .alert-mark-inverse,
-.chip-warning .alert-mark-inverse {
-  fill: var(--warning);
-}
-
-.sign-caution .alert-mark-inverse,
-.chip-caution .alert-mark-inverse {
-  fill: var(--caution);
-}
-
-/* risk chip: a sign reduced to its band */
+/* status pill: a callout reduced to its label */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 8px 2px 6px;
-  font-family: var(--font-sign);
-  font-weight: 700;
-  font-size: 0.92rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
   line-height: 1.35;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   white-space: nowrap;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
 }
 
 .chip svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   flex: none;
 }
 
-.chip-danger {
-  background: var(--danger);
+.chip-hold {
+  background: var(--rail);
   color: #fff;
 }
 
-.chip-warning {
-  background: var(--warning);
-  color: #000;
+.chip-danger {
+  background: var(--danger-wash);
+  border-color: #f2c4bf;
+  color: var(--danger);
 }
 
+.chip-warning,
 .chip-caution {
-  background: var(--caution);
-  color: #000;
+  background: var(--layer-strong);
+  color: var(--ink);
 }
 
 .chip-notice {
-  background: var(--notice);
-  color: #fff;
+  background: var(--notice-wash);
+  border-color: #d6e2f3;
+  color: var(--notice);
 }
 
 .chip-safe {
-  background: var(--safe);
-  color: #fff;
+  background: var(--layer);
+  border-color: var(--rule);
+  color: var(--ink);
 }
 
 .chip-plain {
-  border-color: var(--ink);
+  border-color: rgb(10 14 20 / 0.22);
   color: var(--ink);
 }
 
 .chip-solid {
-  background: var(--primary);
-  color: var(--ground);
+  background: var(--layer-strong);
+  color: var(--ink);
 }
 
 .chip-ghost {

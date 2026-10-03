@@ -26,14 +26,17 @@
   max-width: none;
 }
 
+.audit-seal .sign {
+  padding: 18px 22px 20px;
+}
+
 .audit-seal .sign-band {
-  font-size: 1.5rem;
-  padding: 8px 14px;
+  font-size: 0.8rem;
 }
 
 .audit-seal .sign-band svg {
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
 }
 
 .audit-seal .sign-body {
@@ -47,7 +50,8 @@
   gap: 10px;
   font-size: 0.88rem;
   margin-bottom: 28px;
-  padding: 10px 14px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
   background: var(--layer);
 }
 
@@ -57,7 +61,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 2px solid var(--ink);
+  border-top: 1px solid var(--rule);
   --rail: var(--ink);
 }
 
@@ -85,8 +89,8 @@
   left: 50%;
   top: 50%;
   bottom: -1px;
-  width: 3px;
-  margin-left: -1.5px;
+  width: 2px;
+  margin-left: -1px;
   background: var(--rail);
 }
 
@@ -99,8 +103,8 @@
   left: 50%;
   top: 0;
   height: 50%;
-  width: 3px;
-  margin-left: -1.5px;
+  width: 2px;
+  margin-left: -1px;
   background: var(--rail);
 }
 
@@ -112,9 +116,10 @@
   display: grid;
   place-items: center;
   background: var(--ground);
-  border: 3px solid var(--rail);
-  font-size: 0.78rem;
-  font-weight: 700;
+  border: 2px solid var(--rail);
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .link-top {
@@ -125,9 +130,9 @@
 }
 
 .link-action {
-  font-family: var(--font-sign);
-  font-weight: 700;
-  font-size: 1.1rem;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
 }
 
 .link-file {
@@ -183,7 +188,7 @@
 .link-alarm {
   margin-top: 4px;
   font-size: 0.88rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--danger);
 }
 
