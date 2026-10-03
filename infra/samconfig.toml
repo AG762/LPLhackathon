@@ -8,5 +8,6 @@ region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
 resolve_s3 = true
 confirm_changeset = true
-# Demo stack only: allows the audit log tamper/restore rehearsal routes (STORIES.md E.3).
-parameter_overrides = "DemoControls=true FrontendOrigin=https://d18wlstpxd4zq5.cloudfront.net FrontendBasePath=/ports/5173/ AuthRequired=false"
+# Shared demo stack. DemoControls: audit-log tamper rehearsal (STORIES.md E.3). AllowSignUp=false: invite-only
+# (first admin from scripts/create_user.py, everyone else from Admin → People; see README.md).
+parameter_overrides = "DemoControls=true FrontendOrigin=https://d18wlstpxd4zq5.cloudfront.net FrontendBasePath=/ports/5173/ AuthRequired=false AllowSignUp=false"
