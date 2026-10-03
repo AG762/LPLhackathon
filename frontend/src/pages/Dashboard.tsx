@@ -146,7 +146,7 @@ export default function DashboardPage() {
             <h2 id="measures-title">Measures</h2>
             <dl>
               <Measure label="Storage reclaimed" value={formatBytes(m.storageReclaimedBytes)} note={`${pct(m.storageReclaimedPct)} of everything uploaded`} />
-              <Measure label="Personal data removed" value={String(m.piiItemsRemoved)} note="SSNs, account numbers, birth dates and other items found by the scan" />
+              <Measure label="Personal data removed" value={String(m.piiItemsRemoved)} note="Personal details found by the scan" />
               <Measure
                 label="High-exposure files waiting"
                 value={scanned ? String(m.highPriorityBacklog) : '—'}
