@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import hashlib
 from decimal import Decimal
@@ -7,6 +8,9 @@ from datetime import datetime, timezone
 import boto3
 from classify import classify_text  # Lambda runs from backend/process, so no package prefix
 from rules import evaluate_retention  # copy of backend/shared/rules.py (shared/ isn't deployed)
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 s3 = boto3.client("s3", region_name=AWS_REGION)
@@ -67,6 +71,7 @@ def process_file_event(event, context):
         raw_key = record["s3"]["object"]["key"]
         object_key = unquote_plus(raw_key)
         filename = os.path.basename(object_key)
+        logger.info("Processing s3://%s/%s", bucket_name, object_key)
         
         # 1. Fetch file from S3
         resp = s3.get_object(Bucket=bucket_name, Key=object_key)
@@ -84,7 +89,7 @@ def process_file_event(event, context):
                 classification = classify_text(text_content)
                 CLASSIFICATION_CACHE[file_hash] = classification
             except Exception as err:
-                print(f"Error processing {filename}: {err}")
+                logger.exception("Classification failed for %s; routing to review", filename)
                 classification = {
                     "doc_type": "UNKNOWN",
                     "confidence": 0.0,
@@ -140,7 +145,7 @@ def process_file_event(event, context):
         try:
             table.put_item(Item=item)
         except Exception as e:
-            print(f"DynamoDB put_item skipped (local test): {e}")
+            logger.warning("DynamoDB put_item skipped for %s: %s", file_id, e)
             
         processed_records.append(item)
 
