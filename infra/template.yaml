@@ -31,8 +31,17 @@ Parameters:
     AllowedValues: ["true", "false"]
     Description: Anyone can create an account on the sign-in page (independent advisors). New accounts become advisors and see only their own files. false = invite-only (scripts/create_user.py).
 
+  NotifyFrom:
+    Type: String
+    Description: Sender for "your files are scanned" emails (D.9). Empty turns the emails off. Must be verified in SES.
+    Default: ""
+  NotifyFallbackTo:
+    Type: String
+    Description: Who hears about files uploaded without sign-in (the demo). Empty sends those to nobody.
+    Default: ""
 Conditions:
   SignUpAllowed: !Equals [!Ref AllowSignUp, "true"]
+  NotifyOn: !Not [!Equals [!Ref NotifyFrom, ""]]
   FrontendIsLocalhost: !Equals [!Sub "${FrontendOrigin}${FrontendBasePath}", "http://localhost:5173/"]
 
 Globals:
@@ -224,6 +233,47 @@ Resources:
           AllowOrigins: [!Ref FrontendOrigin]
           AllowMethods: [GET, POST]
           AllowHeaders: [content-type, authorization]
+
+  # ---------- "Files are scanned" emails (D.9, backend/api/notify.py) ----------
+  # Same code as the API (it reuses the scan ingest), on a schedule. Only exists when NotifyFrom is set.
+  NotifyFunction:
+    Type: AWS::Serverless::Function
+    Condition: NotifyOn
+    Properties:
+      CodeUri: ../backend/api
+      Handler: notify.main
+      Timeout: 120
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref FilesBucket
+          FILES_TABLE: !Ref FilesTable
+          RULES_TABLE: !Ref RetentionRulesTable
+          HOLDS_TABLE: !Ref LegalHoldsTable
+          AUDIT_TABLE: !Ref AuditLogTable
+          NOTIFY_FROM: !Ref NotifyFrom
+          NOTIFY_FALLBACK_TO: !Ref NotifyFallbackTo
+          APP_URL: !Sub "${FrontendOrigin}${FrontendBasePath}"
+      Policies:
+        - S3CrudPolicy: { BucketName: !Ref FilesBucket }
+        - DynamoDBCrudPolicy: { TableName: !Ref FilesTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref AuditLogTable }
+        - DynamoDBReadPolicy: { TableName: !Ref RetentionRulesTable }
+        - DynamoDBReadPolicy: { TableName: !Ref LegalHoldsTable }
+        - Statement:
+            - Effect: Allow
+              Action: [s3:PutObjectRetention] # scoring a scan can lock records (D.7), same as the API
+              Resource: !Sub "${FilesBucket.Arn}/records/*"
+            - Effect: Allow
+              Action: [macie2:ListClassificationJobs, macie2:ListFindings, macie2:GetFindings]
+              Resource: "*"
+            - Effect: Allow
+              Action: [ses:SendEmail]
+              Resource: "*"
+      Events:
+        EveryFiveMinutes:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
 
   # ---------- Sign-in (docs/login.md) ----------
 
