@@ -1,10 +1,12 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
-import type { HeroScene } from './HeroScene'
+import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from 'motion/react'
+import type { Stage } from './stage'
 
-// The opening: a pinned stage that scroll drives. One file is cleared and shredded, the next belongs to
-// a client under legal hold and is stopped at the slot. The headline changes with each beat.
+// The opening and the hero are one pinned stage (stage.ts). On a first visit the gate's light ignites in
+// the dark and the camera pulls back while the headline rises; scrolling, a key or a click skips ahead.
+// Scroll then tells the story: one file is cleared and shredded, the next is under a legal hold and is
+// pushed back. Reduced motion (or no WebGL) gets a still frame of the end of the story instead.
 
 export interface HeroFile {
   name: string
@@ -16,62 +18,97 @@ export interface HeroFile {
 interface Props {
   cleared: HeroFile
   held: HeroFile
-  // Whether the opening headline animates in, and whether it should wait (an intro is still playing).
-  animateTitle: boolean
-  waiting: boolean
+  intro: boolean // play the opening (first visit this session)
+  still: boolean // reduced motion
+  onIntroDone: () => void
 }
 
+const EASE = [0.16, 1, 0.3, 1] as const
+// When the headline starts to rise during the opening, in seconds from the first frame.
+const TITLE_AT = 1.35
+
 const BEATS = [
-  { at: [0, 0.13], title: 'Advisors keep every file.', sub: 'Statements, drafts, scanned IDs, old emails. Years of them, on every branch drive.' },
-  { at: [0.17, 0.42], title: 'Most of it should already be gone.', sub: 'Past its retention date, it is only breach exposure and storage cost.' },
-  { at: [0.48, 0.7], title: 'Some of it must never go.', sub: 'A file tied to a legal hold has to survive, however old it looks.' },
-  { at: [0.76, 1], title: 'ShredSafe knows the difference.', sub: '' },
+  { at: [0, 0.1], title: 'Every file has a fate.', sub: 'Statements, drafts, scanned IDs, old emails. Years of them sit on every branch drive.' },
+  { at: [0.15, 0.4], title: 'Most of it should already be gone.', sub: 'Past its retention date, a file is only breach exposure and storage cost.' },
+  { at: [0.46, 0.7], title: 'Some of it must never go.', sub: 'A file tied to a legal hold has to survive, however old it looks.' },
+  { at: [0.78, 1], title: 'ShredSafe knows the difference.', sub: '' },
 ] as const
 
-const STRIPS = 10
-
-export default function HeroScroll({ cleared, held, animateTitle, waiting }: Props) {
+export default function HeroScroll({ cleared, held, intro, still, onIntroDone }: Props) {
   const ref = useRef<HTMLElement>(null)
-  const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
-  const [beat, setBeat] = useState(0)
-  const reduce = useReducedMotion()
-
-  // The 3D vault (HeroScene.ts). Falls back to the flat stage without WebGL or with reduced motion.
   const host = useRef<HTMLDivElement>(null)
-  const scene = useRef<HeroScene | null>(null)
-  const [three, setThree] = useState<'loading' | 'ok' | 'off'>(reduce ? 'off' : 'loading')
+  const stage = useRef<Stage | null>(null)
+  const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
+  const [three, setThree] = useState<'loading' | 'ok' | 'off'>('loading')
+  const [titleUp, setTitleUp] = useState(!intro)
+  const [beat, setBeat] = useState(0)
   const [onScreen, setOnScreen] = useState(true)
+  const done = useRef(onIntroDone)
+  useEffect(() => {
+    done.current = onIntroDone
+  }, [onIntroDone])
+
+  const staticLayout = still || three === 'off'
 
   useEffect(() => {
-    if (reduce) return
     let alive = true
-    import('./HeroScene')
-      .then(({ createHeroScene }) => {
+    let titleTimer = 0
+    import('./stage')
+      .then(({ createStage }) => {
         if (!alive || !host.current) return
         try {
-          scene.current = createHeroScene(
+          stage.current = createStage(
             host.current,
-            { name: cleared.name, lines: [cleared.kind, cleared.client ?? ''].filter(Boolean) },
-            { name: held.name, lines: [held.kind, held.client ?? ''].filter(Boolean), stamp: 'LEGAL HOLD' },
+            { name: cleared.name, kind: cleared.kind, client: cleared.client },
+            { name: held.name, kind: held.kind, client: held.client, stamp: 'Legal hold' },
+            { intro, still, onIntroDone: () => done.current() },
           )
-          scene.current.setProgress(p.get())
-          setThree('ok')
         } catch {
           setThree('off')
+          done.current()
+          return
         }
+        setThree('ok')
+        if (intro && !still) titleTimer = window.setTimeout(() => setTitleUp(true), TITLE_AT * 1000)
+        else done.current()
       })
-      .catch(() => alive && setThree('off'))
-    const onResize = () => scene.current?.resize()
+      .catch(() => {
+        if (!alive) return
+        setThree('off')
+        done.current()
+      })
+    const onResize = () => stage.current?.resize()
     window.addEventListener('resize', onResize)
     return () => {
       alive = false
+      window.clearTimeout(titleTimer)
       window.removeEventListener('resize', onResize)
-      scene.current?.dispose()
-      scene.current = null
+      stage.current?.dispose()
+      stage.current = null
     }
     // Built once per pair of files.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduce, cleared.name, held.name])
+  }, [cleared.name, held.name, still])
+
+  // Any intent to move on skips the rest of the opening.
+  useEffect(() => {
+    if (titleUp) return
+    const skip = () => {
+      stage.current?.skipIntro()
+      setTitleUp(true)
+    }
+    const onKey = (e: KeyboardEvent) => e.key !== 'Tab' && e.key !== 'Shift' && skip()
+    window.addEventListener('wheel', skip, { passive: true })
+    window.addEventListener('touchmove', skip, { passive: true })
+    window.addEventListener('pointerdown', skip)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('wheel', skip)
+      window.removeEventListener('touchmove', skip)
+      window.removeEventListener('pointerdown', skip)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [titleUp])
 
   useEffect(() => {
     const el = ref.current
@@ -81,159 +118,182 @@ export default function HeroScroll({ cleared, held, animateTitle, waiting }: Pro
     return () => io.disconnect()
   }, [])
 
-  // Don't render the vault while the opening shot is playing or the hero is scrolled away.
+  // Only draw while the stage is on screen.
   useEffect(() => {
-    scene.current?.setActive(onScreen && !waiting)
-  }, [onScreen, waiting, three])
+    stage.current?.setActive(onScreen)
+  }, [onScreen, three])
 
   useMotionValueEvent(p, 'change', (v) => {
-    scene.current?.setProgress(v)
-    const next = v < 0.15 ? 0 : v < 0.45 ? 1 : v < 0.73 ? 2 : 3
+    if (staticLayout) return
+    stage.current?.setProgress(v)
+    const next = v < 0.13 ? 0 : v < 0.43 ? 1 : v < 0.74 ? 2 : 3
     setBeat((b) => (b === next ? b : next))
   })
 
-  // File A: drops into the slot (slot line sits at 330px in the stage).
-  const aY = useTransform(p, [0, 0.1, 0.4], [40, 40, 340])
-  // File B: arrives, is stopped by the barrier, and is pushed back.
-  const bY = useTransform(p, [0.44, 0.54, 0.6, 0.66], [-560, 40, 66, -6])
-  const bRotate = useTransform(p, [0.6, 0.66], [0, -4])
-  const barrier = useTransform(p, [0.585, 0.605], [0, 1])
-  const cue = useTransform(p, [0, 0.04], [1, 0])
+  const cue = useTransform(p, [0, 0.03], [1, 0])
+  const shade = useTransform(p, [0.7, 0.8], [0, 1])
 
-  const readout = [
-    { tone: 'reading', text: `Reading ${cleared.name}` },
-    { tone: 'shred', text: `Cleared to delete. ${cleared.reason}` },
+  const status = [
+    { tone: 'idle', text: `Reading ${cleared.name}` },
+    { tone: 'clear', text: `Cleared to delete. ${cleared.reason}` },
     { tone: 'hold', text: `Stopped. ${held.reason}` },
     { tone: 'done', text: 'Two files checked. One cleared, one kept for the hold.' },
   ][beat]
 
+  if (staticLayout) {
+    return (
+      <section className="hs hs-still" ref={ref} aria-labelledby="hs-title">
+        <div className="hs-pin">
+          {three !== 'off' && <div className="hs-3d" ref={host} aria-hidden="true" />}
+          {three === 'off' && <div className="hs-flat" aria-hidden="true" />}
+          <div className="hs-shade hs-shade-left" aria-hidden="true" />
+          <div className="hs-final">
+            <h1 id="hs-title" className="hs-title">
+              Every file has a fate.
+            </h1>
+            <p className="hs-sub">
+              Most of it should already be gone. Some of it must never go. ShredSafe knows the difference: it reads
+              every file, applies your firm's retention rules and legal holds, clears only what the rules allow, and
+              proves each step in a log an examiner can check.
+            </p>
+            <Ctas />
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
-    <section className="hs" ref={ref} aria-label="ShredSafe in four steps">
-      <div className={`hs-pin ${three === 'ok' ? 'hs-pin-3d' : ''}`}>
-        {three !== 'off' && <div className="hs-3d" ref={host} aria-hidden="true" />}
-        <div className="hs-copy">
-          {BEATS.map((b, i) => (
-            <Beat key={b.title} p={p} at={b.at} first={i === 0} last={i === BEATS.length - 1}>
-              {i === 0 && animateTitle ? (
+    <section className="hs" ref={ref} aria-labelledby="hs-title">
+      <div className="hs-pin">
+        <div className="hs-3d" ref={host} aria-hidden="true" />
+        <div className="hs-shade" aria-hidden="true" />
+        <motion.div className="hs-shade hs-shade-left" style={{ opacity: shade }} aria-hidden="true" />
+
+        {BEATS.map((b, i) =>
+          i === BEATS.length - 1 ? (
+            <Beat key={b.title} p={p} at={b.at} className="hs-final" last>
+              <h2 className="hs-title">{b.title}</h2>
+              <p className="hs-sub">
+                It reads every file, applies your firm's retention rules and legal holds, clears only what the rules
+                allow, and proves each step in a log an examiner can check.
+              </p>
+              <Ctas />
+            </Beat>
+          ) : (
+            <Beat key={b.title} p={p} at={b.at} className="hs-beat" first={i === 0}>
+              {i === 0 ? (
                 <>
-                  <h1 className="hs-title">
-                    <RiseWords text={b.title} waiting={waiting} />
+                  <h1 id="hs-title" className="hs-title">
+                    <RiseWords text={b.title} go={titleUp} />
                   </h1>
                   <motion.p
                     className="hs-sub"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={waiting ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.75, ease: [0.16, 1, 0.3, 1] }}
+                    initial={false}
+                    animate={titleUp ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0, y: 8, filter: 'blur(6px)' }}
+                    transition={{ duration: 0.9, delay: titleUp ? 0.45 : 0, ease: EASE }}
                   >
                     {b.sub}
                   </motion.p>
                 </>
               ) : (
                 <>
-                  <h1 className="hs-title">{b.title}</h1>
-                  {b.sub && <p className="hs-sub">{b.sub}</p>}
-                </>
-              )}
-              {i === BEATS.length - 1 && (
-                <>
-                  <p className="hs-sub">
-                    It reads every file, applies your firm's retention rules and legal holds, clears only what the rules
-                    allow, and proves each step in a log an examiner can check.
-                  </p>
-                  <div className="hs-ctas">
-                    <Link className="hp-btn hp-btn-light" to="/dashboard">
-                      Try it now
-                    </Link>
-                    <a className="hp-btn hp-btn-line" href="#how">
-                      How it works
-                    </a>
-                  </div>
+                  <h2 className="hs-title">{b.title}</h2>
+                  <p className="hs-sub">{b.sub}</p>
                 </>
               )}
             </Beat>
-          ))}
-        </div>
-
-        {three === 'ok' && (
-          <div className={`hs-caption hs-readout-${readout.tone}`} aria-live="off">
-            <span className="hs-led" />
-            <span>{readout.text}</span>
-          </div>
+          ),
         )}
 
-        {three === 'off' && (
-        <div className="hs-stage" aria-hidden="true">
-          <div className="hs-light" />
-          <div className="hs-feed">
-            <motion.div className="hs-doc" style={{ y: aY }}>
-              <Doc file={cleared} />
-            </motion.div>
-            <motion.div className="hs-doc" style={{ y: bY, rotate: bRotate }}>
-              <Doc file={held} />
-            </motion.div>
-          </div>
-          <motion.div className="hs-barrier" style={{ scaleX: barrier, opacity: barrier }}>
-            <span className="hs-tri" />
-            Legal hold
-          </motion.div>
-          <div className="hs-machine">
-            <div className="hs-slot" />
-            <div className={`hs-readout hs-readout-${readout.tone}`}>
-              <span className="hs-led" />
-              <span>{readout.text}</span>
-            </div>
-          </div>
-          <div className="hs-bin">
-            {Array.from({ length: STRIPS }, (_, i) => (
-              <Strip key={i} p={p} i={i} />
+        <motion.div
+          className="hs-hud"
+          initial={false}
+          animate={{ opacity: titleUp ? 1 : 0 }}
+          transition={{ duration: 0.8, delay: titleUp ? 0.9 : 0 }}
+        >
+          <p className={`hs-status hs-status-${status.tone}`} aria-live="off">
+            <span className="hs-led" aria-hidden="true" />
+            <span className="hs-status-text">{status.text}</span>
+          </p>
+          <ol className="hs-steps" aria-hidden="true">
+            {BEATS.map((b, i) => (
+              <li key={b.title} className={i === beat ? 'is-on' : i < beat ? 'is-past' : ''} />
             ))}
-          </div>
-        </div>
-        )}
+          </ol>
+        </motion.div>
 
         <motion.div className="hs-cue" style={{ opacity: cue }} aria-hidden="true">
-          Scroll
-          <span className="hs-cue-line" />
+          <motion.span
+            initial={false}
+            animate={{ opacity: titleUp ? 1 : 0 }}
+            transition={{ duration: 0.8, delay: titleUp ? 1.2 : 0 }}
+            className="hs-cue-in"
+          >
+            Scroll
+            <span className="hs-cue-line" />
+          </motion.span>
         </motion.div>
       </div>
     </section>
   )
 }
 
+function Ctas() {
+  return (
+    <div className="hs-ctas">
+      <Link className="hp-pill" to="/dashboard">
+        Try it now
+      </Link>
+      <a className="hp-btn hp-btn-line" href="#how">
+        How it works
+      </a>
+    </div>
+  )
+}
+
 function Beat({
   p,
   at,
-  first,
-  last,
+  first = false,
+  last = false,
+  className,
   children,
 }: {
   p: MotionValue<number>
   at: readonly [number, number]
-  first: boolean
-  last: boolean
-  children: React.ReactNode
+  first?: boolean
+  last?: boolean
+  className: string
+  children: ReactNode
 }) {
   const [start, end] = at
+  const fade = 0.025
   const opacity = useTransform(
     p,
-    first ? [0, end, end + 0.03] : last ? [start - 0.03, start] : [start - 0.03, start, end, end + 0.03],
+    first ? [0, end, end + fade] : last ? [start - fade, start] : [start - fade, start, end, end + fade],
     first ? [1, 1, 0] : last ? [0, 1] : [0, 1, 1, 0],
   )
   const y = useTransform(
     p,
-    first ? [end, end + 0.03] : [start - 0.03, start],
-    first ? [0, -24] : [24, 0],
+    first ? [end, end + fade] : last ? [start - fade, start] : [start - fade, start, end, end + fade],
+    first ? [0, -28] : last ? [28, 0] : [28, 0, 0, -28],
   )
-  const pointerEvents = useTransform(opacity, (o) => (o > 0.5 ? 'auto' : 'none'))
+  const blur = useTransform(
+    p,
+    first ? [end, end + fade] : last ? [start - fade, start] : [start - fade, start, end, end + fade],
+    first ? ['blur(0px)', 'blur(8px)'] : last ? ['blur(8px)', 'blur(0px)'] : ['blur(8px)', 'blur(0px)', 'blur(0px)', 'blur(8px)'],
+  )
+  const visibility = useTransform(opacity, [0, 0.02], ['hidden', 'visible'])
   return (
-    <motion.div className="hs-beat" style={{ opacity, y, pointerEvents }}>
+    <motion.div className={className} style={{ opacity, y, filter: blur, visibility }}>
       {children}
     </motion.div>
   )
 }
 
 // Each word rises out of its own mask, one after another.
-function RiseWords({ text, waiting }: { text: string; waiting: boolean }) {
+function RiseWords({ text, go }: { text: string; go: boolean }) {
   return (
     <>
       {text.split(' ').map((word, i) => (
@@ -241,9 +301,9 @@ function RiseWords({ text, waiting }: { text: string; waiting: boolean }) {
           <span className="hs-word">
             <motion.span
               className="hs-word-in"
-              initial={{ y: '105%' }}
-              animate={{ y: waiting ? '105%' : '0%' }}
-              transition={{ duration: 0.9, delay: 0.3 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+              initial={false}
+              animate={{ y: go ? '0%' : '108%' }}
+              transition={{ duration: 1.1, delay: go ? i * 0.075 : 0, ease: EASE }}
             >
               {word}
             </motion.span>
@@ -252,26 +312,4 @@ function RiseWords({ text, waiting }: { text: string; waiting: boolean }) {
       ))}
     </>
   )
-}
-
-function Doc({ file }: { file: HeroFile }) {
-  return (
-    <div className="hs-paper">
-      <div className="hs-paper-name">{file.name}</div>
-      <div className="hs-paper-kind">{file.kind}</div>
-      {file.client && <div className="hs-paper-kind">{file.client}</div>}
-      <div className="hs-paper-lines" />
-      <div className="hs-paper-lines hs-paper-lines-short" />
-    </div>
-  )
-}
-
-// One strip of the shredded file: comes out of the slot as the file goes in, then drops and fades.
-function Strip({ p, i }: { p: MotionValue<number>; i: number }) {
-  const turn = (i % 2 ? 1 : -1) * (2 + ((i * 5) % 7))
-  const lag = (i % 4) * 0.008
-  const y = useTransform(p, [0.13, 0.4, 0.5 + lag], [-270, 0, 240])
-  const rotate = useTransform(p, [0.4, 0.5 + lag], [0, turn])
-  const opacity = useTransform(p, [0.12, 0.13, 0.44, 0.5 + lag], [0, 1, 1, 0])
-  return <motion.div className="hs-strip" style={{ y, rotate, opacity, left: 10 + i * 22 }} />
 }

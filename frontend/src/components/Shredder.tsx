@@ -7,7 +7,7 @@ import { VERDICT, type ShredItem as Item } from '../lib/shredItems'
 // would give them. Cleared files are cut into strips; a file under legal hold is stopped at the slot;
 // required records are stamped and set aside.
 
-const STRIPS = 9
+const STRIPS = 16
 const EASE = [0.16, 1, 0.3, 1] as const
 
 export default function Shredder({ items }: { items: Item[] }) {
@@ -24,7 +24,7 @@ export default function Shredder({ items }: { items: Item[] }) {
 
   const item = items[index % items.length]
   const running = !paused && inView && !reduce
-  const strips = useMemo(() => Array.from({ length: STRIPS }, (_, i) => ({ i, turn: (i % 2 ? 1 : -1) * (3 + ((i * 7) % 6)) })), [])
+  const strips = useMemo(() => Array.from({ length: STRIPS }, (_, i) => ({ i, turn: (i % 2 ? 1 : -1) * (2 + ((i * 7) % 5)) })), [])
 
   useEffect(() => {
     if (!running || !item) return
@@ -137,7 +137,7 @@ export default function Shredder({ items }: { items: Item[] }) {
               <motion.div
                 key={`${index}-${i}`}
                 className="ss-strip"
-                style={{ left: 13 + i * (240 / STRIPS), width: 240 / STRIPS - 3 }}
+                style={{ left: 17 + i * (236 / STRIPS), width: 236 / STRIPS - 3 }}
                 initial={{ y: -150 }}
                 animate={{ y: [-150, 0, 230], rotate: [0, 0, turn], opacity: [1, 1, 0] }}
                 transition={{ duration: 2.1, times: [0, 0.55, 1], ease: ['linear', 'easeIn'], delay: (i % 3) * 0.02 }}

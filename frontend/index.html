@@ -5,6 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ShredSafe</title>
+    <script>
+      // The home page opens on a dark stage: paint it dark before the app loads, so there's no white flash.
+      if (/^\/(ports\/\d+\/?)?$/.test(location.pathname)) document.documentElement.style.background = '#030405'
+    </script>
   </head>
   <body>
     <div id="root"></div>
