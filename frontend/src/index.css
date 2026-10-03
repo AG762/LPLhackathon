@@ -252,18 +252,47 @@ a:hover {
 }
 
 .mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 0;
   background: transparent;
-  color: var(--rail-ink);
+  color: var(--rail-ink-2);
   padding: 6px 10px;
   cursor: pointer;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 500;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
 }
 
+.mode-switch button:hover {
+  color: var(--rail-ink);
+}
+
+/* The chosen source is the filled one, with a dot; the other stays faded so it reads as "off". */
 .mode-switch button[aria-pressed='true'] {
   background: var(--rail-ink);
   color: var(--rail);
+  font-weight: 700;
+}
+
+.mode-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  flex: none;
+}
+
+.mode-switch button[aria-pressed='true'] .mode-dot {
+  background: currentColor;
+}
+
+.mode-now {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--rail-ink-2);
 }
 
 .mode-switch button:focus-visible {
@@ -333,7 +362,8 @@ a:hover {
     align-items: center;
   }
   .advisor,
-  .mode-label {
+  .mode-label,
+  .mode-now {
     display: none;
   }
   .main {
