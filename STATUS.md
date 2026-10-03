@@ -95,8 +95,9 @@ _Last updated: 2026-10-02_
 | B.2 | Wire the rules engine (B.1) into the process Lambda | ✅ Done (PR #10, needs deploy) | Handler calls `evaluate_retention` (copy in `backend/process/rules.py`, a test keeps it identical to `shared/`), reads live LegalHolds, writes `keepUntil`, `ruleApplied`, `piiTypes`, omits `N/A`. Engine gains `EXPIRED_PII` → DELETE (Reg S-P) and `MARKETING` 5-year. 141 tests pass. Needs a deploy |
 | G.1 | Rest of the demo dataset (42 files total) | ✅ Done (PR #11, needs deploy) | `python data/generate_more.py`: 31 more synthetic files (statements, confirms, drafts + finals, duplicates, emails, marketing, image scans, personal). Every file has a row in `data/expected.csv` |
 | F.10 | Scan button applies an already-finished Macie scan instantly | ✅ Done (PR #13, needs deploy) | On load the queue checks `/scan/status`; a COMPLETE job with no scored files shows **Show sensitive-data results**, which ingests it directly (re-sort + Up-N markers). Checked in demo mode |
-| F.11 | Only offer "Show sensitive-data results" for a scan newer than the files | 🟡 PR #16 open | Button offers a finished scan only if it started at or after the newest upload; otherwise it starts a new scan. Checked against live data |
-| F.12 | Clearer Demo / Live API switch in the sidebar | 🟡 PR open | Selected option is solid white with a filled dot, the other is faded with a hollow dot, plus a "Showing live / demo data" line |
+| F.11 | Only offer "Show sensitive-data results" for a scan newer than the files | ✅ Done (PR #16; workshop needs git pull + npm run online) | Button offers a finished scan only if it started at or after the newest upload; otherwise it starts a new scan. Checked against live data |
+| F.12 | Clearer Demo / Live API switch in the sidebar | ✅ Done (PR #18; workshop needs git pull + npm run online) | Selected option is solid white with a filled dot, the other is faded with a hollow dot, plus a "Showing live / demo data" line |
+| — | `docs/feature-proposals.md` (P1: scan only new or changed files) | ✅ Merged (PR #17) | Team to set the Decision column; mark ✅ there if built |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
 
