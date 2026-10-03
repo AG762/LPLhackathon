@@ -54,7 +54,8 @@ export default function HeroScroll({ cleared, held, intro, still, onIntroDone }:
     let alive = true
     let titleTimer = 0
     let built: Stage | null = null
-    const fail = () => {
+    const fail = (e?: unknown) => {
+      console.warn('3D stage unavailable, showing the still layout:', e)
       if (!alive) return
       setThree('off')
       setTitleUp(true)

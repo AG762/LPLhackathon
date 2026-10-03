@@ -858,7 +858,13 @@ export async function createStage(host: HTMLElement, cleared: StageFile, held: S
   /* post */
 
   // MSAA on the scene; on a 2x screen the extra pixels already smooth edges, so fewer samples will do.
-  const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: maxRatio >= 2 ? 2 : 4 })
+  // Half-float targets need a colour-buffer extension some iPhones lack; without it the stage failed to build
+  // and phones fell back to the still layout. Use plain 8-bit there instead.
+  const halfFloat = renderer.extensions.has('EXT_color_buffer_half_float') || renderer.extensions.has('EXT_color_buffer_float')
+  const target = new THREE.WebGLRenderTarget(1, 1, {
+    type: halfFloat ? THREE.HalfFloatType : THREE.UnsignedByteType,
+    samples: maxRatio >= 2 ? 2 : 4,
+  })
   const composer = new EffectComposer(renderer, target)
   composer.addPass(new RenderPass(scene, camera))
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42, 0.55, 1.0)

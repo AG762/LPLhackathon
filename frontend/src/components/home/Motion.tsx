@@ -1,12 +1,13 @@
 import { Fragment, useRef, type ReactNode } from 'react'
-import { motion, useInView, useMotionValue, useReducedMotion, useSpring } from 'motion/react'
+import { motion, useInView, useMotionValue, useSpring } from 'motion/react'
+import { REDUCED_MOTION } from '../../lib/motion'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
 // Heading lines rise out of masks, word by word, the first time they scroll into view.
 // The heading as a whole is watched: the words themselves start clipped, so they never "enter" view.
 export function Rise({ lines }: { lines: string[] }) {
-  const reduce = useReducedMotion()
+  const reduce = REDUCED_MOTION
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true, amount: 0.5 })
   if (reduce) return <>{lines.map((l, i) => <Fragment key={i}>{i > 0 && <br />}{l}</Fragment>)}</>
@@ -42,7 +43,7 @@ export function Rise({ lines }: { lines: string[] }) {
 // Leans toward the pointer while hovered, then springs back.
 export function Magnetic({ children, strength = 0.3 }: { children: ReactNode; strength?: number }) {
   const ref = useRef<HTMLSpanElement>(null)
-  const reduce = useReducedMotion()
+  const reduce = REDUCED_MOTION
   const x = useSpring(useMotionValue(0), { stiffness: 220, damping: 18, mass: 0.4 })
   const y = useSpring(useMotionValue(0), { stiffness: 220, damping: 18, mass: 0.4 })
 

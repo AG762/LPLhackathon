@@ -27,7 +27,7 @@ const routerBase =
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter basename={routerBase}>
-      <MotionConfig reducedMotion="user">
+      <MotionConfig reducedMotion="never">
         {signInEnabled ? (
           <SessionProvider>
             <App />

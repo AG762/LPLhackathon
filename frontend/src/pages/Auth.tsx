@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { BrandMark } from '../components/BrandMark'
 import { ACCOUNTS_ARE_PREVIEW, AccountError, NeedsConfirmation, NeedsNewPassword, PASSWORD_RULES, accountApi } from '../auth/accountApi'
 import { useToast } from '../state/toast'
 import { usePageTitle } from '../lib/title'
 import './auth.css'
+import { REDUCED_MOTION } from '../lib/motion'
 
 // Sign in, sign up (with the emailed code) and password reset (F.16). Every call goes through
 // auth/accountApi.ts: Amazon Cognito when sign-in is configured, a preview otherwise.
@@ -214,7 +215,7 @@ function CodeInput({ value, onChange }: { value: string; onChange: (v: string) =
 }
 
 function Step({ id, children }: { id: string; children: ReactNode }) {
-  const reduce = useReducedMotion()
+  const reduce = REDUCED_MOTION
   return (
     <motion.div
       key={id}

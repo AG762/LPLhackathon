@@ -449,13 +449,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .scan-track > span {
-    animation: none;
-    width: 100%;
-    opacity: 0.4;
-  }
-}
 
 /* ---------- bulk bar ---------- */
 
