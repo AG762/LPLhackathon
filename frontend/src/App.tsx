@@ -56,12 +56,15 @@ function Sidebar() {
           </div>
           <div className="mode-switch" role="group" aria-labelledby="mode-label">
             <button type="button" aria-pressed={mode === 'mock'} onClick={() => choose('mock')}>
+              <span className="mode-dot" aria-hidden="true" />
               Demo
             </button>
             <button type="button" aria-pressed={mode === 'live'} onClick={() => choose('live')}>
+              <span className="mode-dot" aria-hidden="true" />
               Live API
             </button>
           </div>
+          <p className="mode-now">{mode === 'live' ? 'Showing live data from AWS' : 'Showing built-in demo data'}</p>
         </div>
       </div>
     </aside>
