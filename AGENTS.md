@@ -1,7 +1,7 @@
 # Notes for coding agents (ShredSafe hackathon repo)
 
 Read this before changing code. It covers the rules that have already broken the deployed app once. Start with Rule 0.
-How to deploy and run it: [HOW_TO_RUN.md](HOW_TO_RUN.md). Product and plan: [PLAN.md](PLAN.md). Work breakdown: [STORIES.md](STORIES.md). Who is doing what: [STATUS.md](STATUS.md).
+How to deploy and run it: [README.md](README.md). Product and plan: [PLAN.md](PLAN.md). Work breakdown: [STORIES.md](STORIES.md). Who is doing what: [STATUS.md](STATUS.md).
 
 ## Layout
 
