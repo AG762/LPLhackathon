@@ -94,7 +94,7 @@ _Last updated: 2026-10-02_
 | F.9 | Frontend works behind the online VS Code proxy (`/ports/5173/`) | 🟡 PR #8 open | Router now reads `VITE_ROUTER_BASE` (set by `npm run online`); checked a `--base ./` build served under `/ports/5173/`: pages load, nav links carry the prefix, fonts load. `npm run dev` unchanged |
 | B.2 | Wire the rules engine (B.1) into the process Lambda | 🟡 PR #10 open | Handler calls `evaluate_retention` (copy in `backend/process/rules.py`, a test keeps it identical to `shared/`), reads live LegalHolds, writes `keepUntil`, `ruleApplied`, `piiTypes`, omits `N/A`. Engine gains `EXPIRED_PII` → DELETE (Reg S-P) and `MARKETING` 5-year. 141 tests pass. Needs a deploy |
 | G.1 | Rest of the demo dataset (42 files total) | 🟡 PR open | `python data/generate_more.py`: 31 more synthetic files (statements, confirms, drafts + finals, duplicates, emails, marketing, image scans, personal). Every file has a row in `data/expected.csv` |
-| F.10 | Scan button applies an already-finished Macie scan instantly | 🟡 In progress | Macie jobs take minutes, so the demo pre-runs one (docs/demo-script.md); the button should ingest a COMPLETE job instead of starting a new one |
+| F.10 | Scan button applies an already-finished Macie scan instantly | 🟡 PR open | On load the queue checks `/scan/status`; a COMPLETE job with no scored files shows **Show sensitive-data results**, which ingests it directly (re-sort + Up-N markers). Checked in demo mode |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
 
