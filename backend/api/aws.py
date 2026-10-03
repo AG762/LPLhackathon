@@ -6,6 +6,7 @@ from botocore.config import Config
 
 _s3 = None
 _dynamodb = None
+_macie = None
 
 
 def s3():
@@ -15,6 +16,13 @@ def s3():
         # from the frontend failed with SignatureDoesNotMatch. SigV4 signs only the host.
         _s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
     return _s3
+
+
+def macie():
+    global _macie
+    if _macie is None:
+        _macie = boto3.client("macie2")
+    return _macie
 
 
 def table(env_var):
@@ -30,6 +38,7 @@ def bucket():
 
 def reset():
     """Drop cached clients (tests)."""
-    global _s3, _dynamodb
+    global _s3, _dynamodb, _macie
     _s3 = None
     _dynamodb = None
+    _macie = None
