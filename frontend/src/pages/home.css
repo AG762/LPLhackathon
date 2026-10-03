@@ -85,6 +85,11 @@ html.lenis body {
   transform: none;
 }
 
+/* The skip link moves focus here; the whole page doesn't need a focus ring */
+#main:focus {
+  outline: none;
+}
+
 .hp-h2 {
   font-size: clamp(2.3rem, 5.2vw, 4.6rem);
   letter-spacing: -0.045em;
