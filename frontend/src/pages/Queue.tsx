@@ -150,6 +150,8 @@ export default function QueuePage() {
   const reviewCount = pending.filter((f) => f.recommendation === 'REVIEW').length
   const highCount = pending.filter((f) => canApprove(f) && f.priority === 'HIGH').length
   const scanned = files.some((f) => f.priority)
+  // When the newest scan's results reached these files (the backend stamps scannedAt on ingest)
+  const lastScannedAt = files.reduce<string | null>((max, f) => (f.scannedAt && (!max || f.scannedAt > max) ? f.scannedAt : max), null)
   // Offer the finished scan only if it started after the newest upload; an older scan never saw these
   // files (the backend skips them on ingest), so applying it would score nothing.
   const newestUpload = files.reduce((max, f) => (f.uploadedAt > max ? f.uploadedAt : max), '')
@@ -340,6 +342,7 @@ export default function QueuePage() {
           onStart={startScan}
           startedAt={runningScanStartedAt}
           fileCount={files.length}
+          lastScannedAt={lastScannedAt}
         />
       </header>
 
@@ -529,6 +532,7 @@ function ScanControl({
   onStart,
   startedAt,
   fileCount,
+  lastScannedAt,
 }: {
   state: ScanState
   scanned: boolean
@@ -536,6 +540,7 @@ function ScanControl({
   onStart: () => void
   startedAt: string | null
   fileCount: number
+  lastScannedAt: string | null
 }) {
   // Re-read the clock every 15 s so the estimate counts down while the scan runs.
   const [now, setNow] = useState(() => Date.now())
@@ -557,10 +562,28 @@ function ScanControl({
     )
   }
   return (
-    <button className="btn" onClick={onStart}>
-      {ready ? 'Show sensitive-data results' : scanned ? 'Scan for sensitive data again' : 'Scan for sensitive data'}
-    </button>
+    <div className="scan-idle">
+      <button className="btn" onClick={onStart}>
+        {ready ? 'Show sensitive-data results' : scanned ? 'Scan for sensitive data again' : 'Scan for sensitive data'}
+      </button>
+      {lastScannedAt && (
+        <span className="scan-last">
+          Last scan finished <time dateTime={lastScannedAt}>{scanTime(lastScannedAt)}</time>
+        </span>
+      )}
+    </div>
   )
+}
+
+// "today at 9:13 AM", "yesterday at 4:02 PM", or "Oct 1 at 9:13 AM"
+function scanTime(iso: string) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000)
+  if (days === 0) return `today at ${time}`
+  if (days === 1) return `yesterday at ${time}`
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${time}`
 }
 
 function SkeletonRows() {

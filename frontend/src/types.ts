@@ -32,6 +32,7 @@ export interface FileRecord {
   macieFindings?: Record<string, number>
   sensitivityScore?: number
   priority?: Priority
+  scannedAt?: string // when the latest scan's results were applied to this file
   clientId?: string
   clientName?: string
   accountId?: string
