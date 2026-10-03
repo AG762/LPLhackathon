@@ -100,8 +100,25 @@ async function cognito<T>(call: () => Promise<T>): Promise<T> {
 // can sign the new advisor straight in.
 let pendingSignUp: { email: string; password: string } | null = null
 
+// Amplify refuses to sign in while it still remembers an earlier session in this browser (another account,
+// or one left over from testing). Signing in means "be this person now", so the old session is dropped here
+// (locally; its tokens just expire) and the sign-in is tried once more.
+async function signInReplacingOldSession(email: string, password: string) {
+  try {
+    return await signIn({ username: email, password })
+  } catch (e) {
+    if ((e as { name?: string }).name !== 'UserAlreadyAuthenticatedException') throw friendly(e)
+    try {
+      await signOut()
+    } catch {
+      /* forgetting the old tokens locally is enough */
+    }
+    return cognito(() => signIn({ username: email, password }))
+  }
+}
+
 async function liveSignIn(email: string, password: string) {
-  const result = await cognito(() => signIn({ username: email, password }))
+  const result = await signInReplacingOldSession(email, password)
   switch (result.nextStep.signInStep) {
     case 'DONE':
       await refreshSession()
