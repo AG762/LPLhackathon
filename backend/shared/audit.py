@@ -1,21 +1,34 @@
-SENSITIVITY_WEIGHTS = {
-"social security": 1.0,
-"ssn": 1.0,
-"account number": 0.9,
-"routing number": 0.9,
-"password": 1.0,
-"credit card": 1.0,
-"financial": 0.7,
-"client": 0.6,
-"employee": 0.5,
-"confidential": 0.8, 
-}
+import hashlib
+import json
+from datetime import datetime, timezone
 
-def score_sensitvety(text: str) -> float:
-    text = text.lower()
-    score = 0.0
+from.db import put_audit_entry
 
-    for keyword, weight in SENSITIVITY_WEIGHTS.items():
-        if keyword in text:
-            score = max(score, weight)
-            return score
+def create_hash(data: dict) -> str:
+    serialized = json.dumps(
+        data,
+        sort_keys = True,
+        default = str
+    )
+    return hashlib.sha256(
+        serialized.encode("utf-8")
+
+    ).hexdigest()
+def append_audit(
+    file_id: str,
+    action: str,
+    reason: str,
+    user: str,
+    previous_hash: str | None = None
+):
+    entry = {
+        "file_id": file_id,
+        "action": action,
+        "reason": reason,
+        "user": user,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "previous_hash": previous_hash
+    }
+    entry["entry_hash"] = create_hash(entry)
+    put_audit_entry(entry)
+    return entry
