@@ -143,3 +143,19 @@
     grid-row: 2;
   }
 }
+
+/* F.19: the scan that starts after a batch */
+.upload-scan {
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--layer);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.upload-scan-failed {
+  border-color: rgb(180 35 24 / 0.3);
+  background: #fdf3f2;
+}

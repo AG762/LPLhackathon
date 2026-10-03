@@ -5,6 +5,7 @@ import { api, ApiError } from '../api/client'
 import { Chip, Sign } from '../components/Sign'
 import { useFiles } from '../state/files'
 import { useToast } from '../state/toast'
+import { scanEta } from '../lib/scanEstimate'
 import type { FileRecord, FileStatus, ScanState } from '../types'
 import { canApprove, docTypeLabel, fileName, formatBytes, formatDate, isOnHold, sortByPriority } from '../lib/format'
 import './queue.css'
@@ -41,6 +42,8 @@ export default function QueuePage() {
   // A scan that finished while nobody was watching (Macie jobs take minutes, so the demo pre-runs one).
   // Holds the job's start time: only files uploaded before it were scanned.
   const [finishedScanStartedAt, setFinishedScanStartedAt] = useState<string | null>(null)
+  // When the running scan started, for the time estimate under the scan status.
+  const [runningScanStartedAt, setRunningScanStartedAt] = useState<string | null>(null)
   // After a scan re-sorts the queue, each row that moved up (got riskier) keeps a marker until the advisor has looked at it.
   const [moved, setMoved] = useState<Map<string, number>>(new Map())
   const orderBeforeScan = useRef<Map<string, number> | null>(null)
@@ -112,6 +115,7 @@ export default function QueuePage() {
       .scanStatus()
       .then((s) => {
         setScanState(s.state === 'RUNNING' ? 'RUNNING' : 'IDLE')
+        setRunningScanStartedAt(s.state === 'RUNNING' ? (s.startedAt ?? null) : null)
         setFinishedScanStartedAt(s.state === 'COMPLETE' ? (s.startedAt ?? null) : null)
       })
       .catch(() => {})
@@ -163,6 +167,7 @@ export default function QueuePage() {
         return
       }
       await api.startScan()
+      setRunningScanStartedAt(new Date().toISOString())
       setScanState('RUNNING')
     } catch (e) {
       toast(errorMessage(e), 'error')
@@ -250,7 +255,14 @@ export default function QueuePage() {
             Nothing is gone for good until the grace period ends.
           </p>
         </div>
-        <ScanControl state={scanState} scanned={scanned} ready={scanReady} onStart={startScan} />
+        <ScanControl
+          state={scanState}
+          scanned={scanned}
+          ready={scanReady}
+          onStart={startScan}
+          startedAt={runningScanStartedAt}
+          fileCount={files.length}
+        />
       </header>
 
       {error && (
@@ -388,12 +400,24 @@ function ScanControl({
   scanned,
   ready,
   onStart,
+  startedAt,
+  fileCount,
 }: {
   state: ScanState
   scanned: boolean
   ready: boolean
   onStart: () => void
+  startedAt: string | null
+  fileCount: number
 }) {
+  // Re-read the clock every 15 s so the estimate counts down while the scan runs.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (state !== 'RUNNING') return
+    const id = window.setInterval(() => setNow(Date.now()), 15_000)
+    return () => window.clearInterval(id)
+  }, [state])
+
   if (state === 'RUNNING') {
     return (
       <div className="scan-running" role="status">
@@ -401,6 +425,7 @@ function ScanControl({
         <span className="scan-track" aria-hidden="true">
           <span />
         </span>
+        <span className="scan-eta">{scanEta(startedAt, fileCount, now)}</span>
       </div>
     )
   }
