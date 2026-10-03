@@ -1,0 +1,431 @@
+/* Sign in, sign up, reset (F.16). Same world as the home page: an ink stage on the left with file names
+   drifting past (cleared ones struck through, held ones marked), and a calm white form on the right. */
+
+html.au-root,
+html.au-root body {
+  background: #ffffff;
+}
+
+.au {
+  --au-ink: #070b12;
+  --au-text: #0a0e14;
+  --au-mute: #4b5563;
+  --au-line: #d5dae0;
+  --au-glow: #cfe2ff;
+  --au-alert: #b42318;
+  --au-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100svh;
+  font-family: 'Geist Variable', 'Barlow', system-ui, sans-serif;
+  color: var(--au-text);
+}
+
+/* ---------- the stage ---------- */
+
+.au-stage {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 55% at 70% 0%, rgb(207 226 255 / 0.14), transparent 70%),
+    var(--au-ink);
+  color: #f2f4f7;
+}
+
+.au-river {
+  position: absolute;
+  inset: 0;
+  padding: 0 clamp(24px, 5vw, 64px);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 50%, transparent 68%);
+}
+
+.au-river ul {
+  display: grid;
+  gap: 22px;
+  margin: 0;
+  padding: 0 0 22px;
+  list-style: none;
+  animation: au-drift 38s linear infinite;
+}
+
+.au-river li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: clamp(1rem, 1.6vw, 1.35rem);
+  letter-spacing: -0.02em;
+  color: #9ba5b3;
+  white-space: nowrap;
+}
+
+.au-river .au-cleared {
+  color: #5d6775;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.au-river .au-held {
+  color: #f2f4f7;
+}
+
+.au-tag {
+  padding: 2px 9px;
+  border: 1px solid rgb(207 226 255 / 0.5);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--au-glow);
+  text-decoration: none;
+}
+
+@keyframes au-drift {
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+.au-stage-line {
+  position: absolute;
+  left: clamp(24px, 5vw, 64px);
+  right: clamp(24px, 5vw, 64px);
+  bottom: clamp(28px, 6vh, 56px);
+  max-width: 30ch;
+  font-size: clamp(1.4rem, 2.4vw, 2.1rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+/* ---------- the form side ---------- */
+
+.au-main {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  padding: 28px clamp(16px, 5vw, 56px);
+}
+
+.au-brand {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  color: var(--au-text);
+  text-decoration: none;
+}
+
+.au-brand .brand-mark {
+  width: 22px;
+  height: 22px;
+  filter: invert(1);
+}
+
+.au-card {
+  align-self: center;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px 0;
+}
+
+.au-card h1 {
+  font-family: inherit;
+  font-size: clamp(1.9rem, 3vw, 2.4rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.au-sub {
+  margin: 10px 0 28px;
+  color: var(--au-mute);
+  line-height: 1.55;
+}
+
+.au-card form {
+  display: grid;
+  gap: 18px;
+}
+
+.au-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.au-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.au-field > label {
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.au-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--au-line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--au-text);
+  font: inherit;
+  font-size: 1rem;
+  transition: border-color 150ms var(--au-ease), box-shadow 150ms var(--au-ease);
+}
+
+.au-input:hover {
+  border-color: #9aa1aa;
+}
+
+.au-input:focus-visible {
+  outline: none;
+  border-color: var(--au-text);
+  box-shadow: 0 0 0 4px rgb(10 14 20 / 0.1);
+}
+
+.au-hint {
+  font-size: 0.85rem;
+  color: var(--au-mute);
+}
+
+.au-hint a,
+.au-switch a,
+.au-link {
+  color: var(--au-text);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.au-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.au-password {
+  position: relative;
+}
+
+.au-password .au-input {
+  padding-right: 72px;
+}
+
+.au-reveal {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  translate: 0 -50%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--au-mute);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.au-reveal:hover {
+  background: #f1f3f5;
+  color: var(--au-text);
+}
+
+.au-rules {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.au-rules li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 200ms var(--au-ease);
+}
+
+.au-rule-mark {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #a3abb5;
+  border-radius: 50%;
+  transition: background-color 200ms var(--au-ease), border-color 200ms var(--au-ease);
+}
+
+.au-rule-ok {
+  color: var(--au-text);
+}
+
+.au-rule-ok .au-rule-mark {
+  border-color: var(--au-text);
+  background:
+    no-repeat center / 9px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.5 4.8 9 10 3.5' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"),
+    var(--au-text);
+}
+
+.au-optional {
+  color: #6b7280;
+}
+
+.au-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--au-mute);
+  cursor: pointer;
+}
+
+.au-check input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--au-text);
+}
+
+.au-submit {
+  min-height: 50px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--au-text);
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 200ms var(--au-ease), transform 150ms var(--au-ease);
+}
+
+.au-submit:hover:not(:disabled) {
+  background: #1d2633;
+}
+
+.au-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.au-submit:disabled {
+  background: #9aa1aa;
+  cursor: not-allowed;
+}
+
+.au-error {
+  padding: 10px 14px;
+  border: 1px solid rgb(180 35 24 / 0.3);
+  border-radius: 10px;
+  background: #fdf3f2;
+  color: var(--au-alert);
+  font-size: 0.9rem;
+}
+
+.au-switch {
+  margin-top: 22px;
+  font-size: 0.92rem;
+  color: var(--au-mute);
+}
+
+.au-steps {
+  display: flex;
+  gap: 18px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+  counter-reset: au-step;
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+.au-steps li {
+  counter-increment: au-step;
+}
+
+.au-steps li::before {
+  content: counter(au-step) '  ';
+  font-weight: 600;
+}
+
+.au-steps li[aria-current='step'] {
+  color: var(--au-text);
+  font-weight: 500;
+}
+
+.au-code {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.au-code-box {
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid var(--au-line);
+  border-radius: 12px;
+  text-align: center;
+  font: inherit;
+  font-size: 1.5rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 150ms var(--au-ease), box-shadow 150ms var(--au-ease);
+}
+
+.au-code-box:focus-visible {
+  outline: none;
+  border-color: var(--au-text);
+  box-shadow: 0 0 0 4px rgb(10 14 20 / 0.1);
+}
+
+.au-foot {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+:is(.au a, .au button, .au input):focus-visible {
+  outline: 2px solid var(--au-text);
+  outline-offset: 2px;
+}
+
+.au-input:focus-visible,
+.au-code-box:focus-visible {
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .au {
+    grid-template-columns: 1fr;
+  }
+  .au-stage {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .au-row {
+    grid-template-columns: 1fr;
+  }
+  .au-code {
+    gap: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .au-river ul {
+    animation: none;
+  }
+}

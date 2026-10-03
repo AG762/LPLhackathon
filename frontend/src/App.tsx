@@ -8,6 +8,7 @@ import UploadPage from './pages/Upload'
 import DashboardPage from './pages/Dashboard'
 import AuditPage from './pages/Audit'
 import AdminPage from './pages/Admin'
+import { ForgotPasswordPage, SignInPage, SignUpPage } from './pages/Auth'
 import HomePage from './pages/Home'
 import { BrandMark } from './components/BrandMark'
 
@@ -80,6 +81,9 @@ export default function App() {
       <FilesProvider>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/signin" element={<SignInPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/forgot" element={<ForgotPasswordPage />} />
           <Route element={<Portal />}>
             <Route path="/queue" element={<QueuePage />} />
             <Route path="/upload" element={<UploadPage />} />
