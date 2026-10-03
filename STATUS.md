@@ -58,7 +58,10 @@ _Last updated: 2026-10-02_
 | C.3 | S3 event trigger & DynamoDB write | ✅ Done | SHA-256 fingerprinting + item staging; merged to main |
 | C.4 | Cached-response fallback | ✅ Done | In-memory cache keyed by SHA-256 for demo resilience |
 | C.5 | Error guardrails (corrupt/unknown -> REVIEW) | ✅ Done | Default to UNKNOWN / confidence 0.0 without crashing |
-| B.1 | SEC 17a-4 / FINRA retention rules | ✅ Done | SEC 17a-4(b/c) 3yr/6yr schedules, legal hold matching across 5 scopes, 5/5 unit tests passed |
+| B.1 | SEC 17a-4 / FINRA retention rules | ✅ Done | SEC 17a-4(b/c) 3yr/6yr schedules with keepUntil date arithmetic |
+| B.2 | Multi-attribute legal hold matching | ✅ Done | Matches on CLIENT_NAME, CLIENT_ID, ACCOUNT_ID, BRANCH_ID, KEYWORD |
+| B.3 | Legal hold override | ✅ Done | Strict override sets recommendation to RETAIN and keepUntil to 9999-12-31 |
+| B.4 | Defensible disposal of non-records | ✅ Done | Immediate DELETE recommendation for drafts, personal, and duplicate files |
 
 ## Aryan: audit log (E), frontend (F), plus D.3 / D.4 / D.7 / demo reset
 _Last updated: 2026-10-02_
