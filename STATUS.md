@@ -103,6 +103,7 @@ _Last updated: 2026-10-02_
 | F.14 | Restyle the portal (queue, upload, dashboard, audit) to match the new home page | 🔵 In review (PR #22) | Monochrome ink + silver, Geist, pill buttons; safety-sign colours removed |
 | F.15 | Admin panel (`/admin`): team and roles, invites, legal holds, retention rules | 🔵 In review (PR #23) | Frontend only, works in Demo mode. Live needs admin API routes (not built; proposed in the PR). Sign-in/sign-up itself is Arihant's (`arihant-login`), not redone here |
 | F.16 | Sign in / sign up / forgot password pages (UI only) | 🔵 In review (PR #24) | Our own screens at /signin, /signup, /forgot. Calls go through one adapter (`src/auth/accountApi.ts`) that pretends in Demo mode; connecting it to Cognito is for the login owner (Arihant) |
+| F.17 | Launch-ready copy pass over the whole site (home, sign-in, portal, admin) | 🟡 In progress (branch aryan-copy) | Wording only: no hackathon/dev notes in the UI, consistent terms, honest claims |
 | — | `docs/feature-proposals.md` (P1: scan only new or changed files) | ✅ Merged (PR #17) | Team to set the Decision column; mark ✅ there if built |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
