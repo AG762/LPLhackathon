@@ -1346,3 +1346,142 @@ html.lenis body {
   display: inline-block;
   justify-self: end;
 }
+
+/* ---------- cinematic opening ---------- */
+
+.ci {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  background: #030509;
+}
+
+.ci-canvas,
+.ci-canvas canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.ci-black {
+  position: absolute;
+  inset: 0;
+  background: #030509;
+  pointer-events: none;
+}
+
+.ci-copy {
+  position: absolute;
+  inset: 7vh 0 auto;
+  display: grid;
+  justify-items: center;
+  padding: 0 var(--hp-gutter);
+  text-align: center;
+  pointer-events: none;
+}
+
+.ci-kicker {
+  font-size: 0.85rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--hp-mute);
+}
+
+.ci-title {
+  margin-top: 14px;
+  font-size: clamp(2.4rem, 5.4vw, 4.8rem);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+  color: var(--hp-text);
+}
+
+.ci-sub {
+  margin-top: 18px;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  color: var(--hp-mute);
+}
+
+.ci-actions {
+  position: absolute;
+  left: 50%;
+  bottom: 5vh;
+  translate: -50% 0;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.ci-hint {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--hp-mute);
+}
+
+/* ---------- 3D hero ---------- */
+
+.hs-3d,
+.hs-3d canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hs-3d {
+  z-index: 0;
+}
+
+/* Keep the words readable over the vault. */
+.hs-pin-3d::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(to right, rgb(4 6 10 / 0.82), rgb(4 6 10 / 0.35) 45%, transparent 65%);
+  pointer-events: none;
+}
+
+.hs-pin-3d {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.hs-pin-3d .hs-copy {
+  max-width: 640px;
+}
+
+.hs-caption {
+  position: absolute;
+  z-index: 1;
+  right: var(--hp-gutter);
+  bottom: 40px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 360px;
+  padding: 12px 16px;
+  border: 1px solid var(--hp-line);
+  border-radius: 12px;
+  background: rgb(7 11 18 / 0.6);
+  backdrop-filter: blur(8px);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--hp-mute);
+}
+
+@media (max-width: 900px) {
+  .hs-pin-3d::before {
+    background: linear-gradient(to bottom, rgb(4 6 10 / 0.85), rgb(4 6 10 / 0.3) 45%, transparent 60%);
+  }
+  .hs-caption {
+    left: var(--hp-gutter);
+    right: var(--hp-gutter);
+    bottom: 24px;
+    max-width: none;
+  }
+}

@@ -1,9 +1,7 @@
-import { Fragment, lazy, Suspense, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
-
-// three.js is only needed here, so it loads in its own chunk after the page is up.
-const ShredField = lazy(() => import('./ShredField'))
+import type { HeroScene } from './HeroScene'
 
 // The opening: a pinned stage that scroll drives. One file is cleared and shredded, the next belongs to
 // a client under legal hold and is stopped at the slot. The headline changes with each beat.
@@ -18,8 +16,9 @@ export interface HeroFile {
 interface Props {
   cleared: HeroFile
   held: HeroFile
-  // Seconds to wait before the opening headline rises in (after the intro); 0 shows it at once.
-  enterDelay: number
+  // Whether the opening headline animates in, and whether it should wait (an intro is still playing).
+  animateTitle: boolean
+  waiting: boolean
 }
 
 const BEATS = [
@@ -31,13 +30,64 @@ const BEATS = [
 
 const STRIPS = 10
 
-export default function HeroScroll({ cleared, held, enterDelay }: Props) {
+export default function HeroScroll({ cleared, held, animateTitle, waiting }: Props) {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
   const [beat, setBeat] = useState(0)
   const reduce = useReducedMotion()
 
+  // The 3D vault (HeroScene.ts). Falls back to the flat stage without WebGL or with reduced motion.
+  const host = useRef<HTMLDivElement>(null)
+  const scene = useRef<HeroScene | null>(null)
+  const [three, setThree] = useState<'loading' | 'ok' | 'off'>(reduce ? 'off' : 'loading')
+  const [onScreen, setOnScreen] = useState(true)
+
+  useEffect(() => {
+    if (reduce) return
+    let alive = true
+    import('./HeroScene')
+      .then(({ createHeroScene }) => {
+        if (!alive || !host.current) return
+        try {
+          scene.current = createHeroScene(
+            host.current,
+            { name: cleared.name, lines: [cleared.kind, cleared.client ?? ''].filter(Boolean) },
+            { name: held.name, lines: [held.kind, held.client ?? ''].filter(Boolean), stamp: 'LEGAL HOLD' },
+          )
+          scene.current.setProgress(p.get())
+          setThree('ok')
+        } catch {
+          setThree('off')
+        }
+      })
+      .catch(() => alive && setThree('off'))
+    const onResize = () => scene.current?.resize()
+    window.addEventListener('resize', onResize)
+    return () => {
+      alive = false
+      window.removeEventListener('resize', onResize)
+      scene.current?.dispose()
+      scene.current = null
+    }
+    // Built once per pair of files.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduce, cleared.name, held.name])
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting))
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  // Don't render the vault while the opening shot is playing or the hero is scrolled away.
+  useEffect(() => {
+    scene.current?.setActive(onScreen && !waiting)
+  }, [onScreen, waiting, three])
+
   useMotionValueEvent(p, 'change', (v) => {
+    scene.current?.setProgress(v)
     const next = v < 0.15 ? 0 : v < 0.45 ? 1 : v < 0.73 ? 2 : 3
     setBeat((b) => (b === next ? b : next))
   })
@@ -59,23 +109,21 @@ export default function HeroScroll({ cleared, held, enterDelay }: Props) {
 
   return (
     <section className="hs" ref={ref} aria-label="ShredSafe in four steps">
-      <div className="hs-pin">
-        <Suspense fallback={null}>
-          <ShredField progress={p} still={Boolean(reduce)} />
-        </Suspense>
+      <div className={`hs-pin ${three === 'ok' ? 'hs-pin-3d' : ''}`}>
+        {three !== 'off' && <div className="hs-3d" ref={host} aria-hidden="true" />}
         <div className="hs-copy">
           {BEATS.map((b, i) => (
             <Beat key={b.title} p={p} at={b.at} first={i === 0} last={i === BEATS.length - 1}>
-              {i === 0 && enterDelay > 0 ? (
+              {i === 0 && animateTitle ? (
                 <>
                   <h1 className="hs-title">
-                    <RiseWords text={b.title} delay={enterDelay} />
+                    <RiseWords text={b.title} waiting={waiting} />
                   </h1>
                   <motion.p
                     className="hs-sub"
                     initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: enterDelay + 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    animate={waiting ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.75, ease: [0.16, 1, 0.3, 1] }}
                   >
                     {b.sub}
                   </motion.p>
@@ -106,6 +154,14 @@ export default function HeroScroll({ cleared, held, enterDelay }: Props) {
           ))}
         </div>
 
+        {three === 'ok' && (
+          <div className={`hs-caption hs-readout-${readout.tone}`} aria-live="off">
+            <span className="hs-led" />
+            <span>{readout.text}</span>
+          </div>
+        )}
+
+        {three === 'off' && (
         <div className="hs-stage" aria-hidden="true">
           <div className="hs-light" />
           <div className="hs-feed">
@@ -133,6 +189,7 @@ export default function HeroScroll({ cleared, held, enterDelay }: Props) {
             ))}
           </div>
         </div>
+        )}
 
         <motion.div className="hs-cue" style={{ opacity: cue }} aria-hidden="true">
           Scroll
@@ -176,7 +233,7 @@ function Beat({
 }
 
 // Each word rises out of its own mask, one after another.
-function RiseWords({ text, delay }: { text: string; delay: number }) {
+function RiseWords({ text, waiting }: { text: string; waiting: boolean }) {
   return (
     <>
       {text.split(' ').map((word, i) => (
@@ -185,8 +242,8 @@ function RiseWords({ text, delay }: { text: string; delay: number }) {
             <motion.span
               className="hs-word-in"
               initial={{ y: '105%' }}
-              animate={{ y: '0%' }}
-              transition={{ duration: 0.9, delay: delay + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+              animate={{ y: waiting ? '105%' : '0%' }}
+              transition={{ duration: 0.9, delay: 0.3 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
             >
               {word}
             </motion.span>

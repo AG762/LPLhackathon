@@ -10,7 +10,8 @@ import HeroScroll, { type HeroFile } from '../components/home/HeroScroll'
 import FileRiver, { type RiverFile } from '../components/home/FileRiver'
 import BigList from '../components/home/BigList'
 import ChainDemo from '../components/home/ChainDemo'
-import Intro, { INTRO_SECONDS } from '../components/home/Intro'
+import Intro from '../components/home/Intro'
+import CinematicIntro from '../components/home/CinematicIntro'
 import { Magnetic, Rise } from '../components/home/Motion'
 import { pickItems, toItem, type ShredItem } from '../lib/shredItems'
 import { fileName, isOnHold } from '../lib/format'
@@ -35,6 +36,24 @@ const FALLBACK_RIVER: RiverFile[] = [
   'Retirement_Income_Plan_Okafor_FINAL.txt', 'Funny_Cat_Meme.png', 'Email_Delgado_2025_11.eml',
 ].map((name, i) => ({ name, state: i % 5 === 1 || i % 5 === 4 ? 'held' : i % 3 === 0 ? 'cleared' : 'kept' }) as RiverFile)
 
+const INTRO_KEY = 'shredsafe.introSeen'
+
+function introSeen() {
+  try {
+    return sessionStorage.getItem(INTRO_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markIntroSeen() {
+  try {
+    sessionStorage.setItem(INTRO_KEY, '1')
+  } catch {
+    // private mode: the intro just plays again next time
+  }
+}
+
 function useSmoothScroll(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
@@ -47,8 +66,14 @@ export default function HomePage() {
   const { files, loaded, error } = useFiles()
   const reduce = useReducedMotion()
   useSmoothScroll(!reduce)
-  const [intro, setIntro] = useState(!reduce)
-  const endIntro = useCallback(() => setIntro(false), [])
+  // The opening plays once per visit: coming back from the portal goes straight to the page.
+  const [intro, setIntro] = useState<'cinema' | 'simple' | null>(() => (reduce || introSeen() ? null : 'cinema'))
+  const endIntro = useCallback(() => {
+    markIntroSeen()
+    window.scrollTo(0, 0)
+    setIntro(null)
+  }, [])
+  const simpleIntro = useCallback(() => setIntro('simple'), [])
 
   useEffect(() => {
     document.title = 'ShredSafe: defensible disposal for advisors'
@@ -98,7 +123,8 @@ export default function HomePage() {
 
   return (
     <div className="hp">
-      {intro && <Intro files={counts.read} onDone={endIntro} />}
+      {intro === 'cinema' && <CinematicIntro fileName={hero?.held.name ?? FALLBACK_HELD.name} onDone={endIntro} onFallback={simpleIntro} />}
+      {intro === 'simple' && <Intro files={counts.read} onDone={endIntro} />}
       <header className="hp-nav">
         <Link className="hp-brand" to="/">
           <BrandMark />
@@ -116,7 +142,7 @@ export default function HomePage() {
         </Magnetic>
       </header>
 
-      <HeroScroll enterDelay={reduce ? 0 : INTRO_SECONDS - 0.7} cleared={(hero ?? { cleared: FALLBACK_CLEARED }).cleared} held={(hero ?? { held: FALLBACK_HELD }).held} />
+      <HeroScroll animateTitle={!reduce} waiting={intro !== null} cleared={(hero ?? { cleared: FALLBACK_CLEARED }).cleared} held={(hero ?? { held: FALLBACK_HELD }).held} />
 
       <FileRiver files={river} counts={counts} source={source} />
 
