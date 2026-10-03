@@ -6,6 +6,7 @@ import '@fontsource-variable/geist'
 import '@fontsource-variable/geist-mono'
 import { mode } from '../api/client'
 import { BrandMark } from '../components/BrandMark'
+import { TryLink } from '../components/TryLink'
 import Shredder from '../components/Shredder'
 import HeroScroll, { type HeroFile } from '../components/home/HeroScroll'
 import FileRiver, { type RiverFile } from '../components/home/FileRiver'
@@ -174,9 +175,9 @@ export default function HomePage() {
             Sign in
           </Link>
           <Magnetic>
-            <Link className="hp-pill hp-pill-nav" to="/dashboard">
+            <TryLink className="hp-pill hp-pill-nav">
               Try it now
-            </Link>
+            </TryLink>
           </Magnetic>
         </div>
       </header>
@@ -255,9 +256,9 @@ export default function HomePage() {
                       Start a pilot
                     </Link>
                   </Magnetic>
-                  <Link className="hp-close-alt" to="/dashboard">
+                  <TryLink className="hp-close-alt">
                     Or try it with sample files
-                  </Link>
+                  </TryLink>
                 </div>
               </div>
               <ul className="hp-included" aria-label="Included">
@@ -288,7 +289,7 @@ export default function HomePage() {
                 <div>
                   <h3>Portal</h3>
                   <ul>
-                    <li><Link to="/dashboard">Try it now</Link></li>
+                    <li><TryLink>Try it now</TryLink></li>
                     <li><Link to="/signin">Sign in</Link></li>
                     <li><Link to="/signup">Start a pilot</Link></li>
                   </ul>
