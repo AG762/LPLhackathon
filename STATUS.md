@@ -36,7 +36,7 @@ _Last updated: 2026-10-02_
 | D.2 | Approve / reject / bulk-approve with server-side guards | ✅ Done | Hold / RETAIN / `keepUntil` → 409; bulk returns `{approved, blocked}` |
 | D.3 | Restore from quarantine | ✅ Done (Aryan) | See Aryan's section |
 | D.4 | Purge → `PURGED` + audit entry | ✅ Done (Aryan) | See Aryan's section |
-| D.5 | Macie scan / status / ingest → sensitivity score | ⬜ Not started | Planned: Arihant (next). Uses Aryan's B.6 score |
+| D.5 | Macie scan / status / ingest → sensitivity score | ✅ Done (needs live run) | `POST /scan` starts a ONE_TIME job (all managed identifiers, so NAME/ADDRESS count); `GET /scan/status` reads the newest `<bucket>-*` job; `POST /scan/ingest` saves `macieFindings`, `sensitivityScore`, `priority`, `scoreSource` via `sensitivity.score_file`, then `records.lock_if_needed` (D.7). Files uploaded after the job started are skipped until the next scan. **Run a scan well before the demo (minutes).** Classifier fallback (B.7) needs `process` to save `piiTypes` |
 | D.6 | `/dashboard` metrics | ⬜ Not started | Planned: Arihant (after D.5) |
 | D.7 | RETAIN + HIGH sensitivity → `records/` (LOCKED) | ✅ Done (Aryan) | See Aryan's section |
 | — | Merged `anwesh/process` into `main` + fixed `process` wiring | ✅ Done | Handler name, imports, `fileId` from key, URL-decoded keys |
@@ -89,6 +89,7 @@ _Last updated: 2026-10-02_
 | H.2, H.5 | Slide deck + judge Q&A | 🟡 In progress | See the Pitch & demo (H) section |
 | — | End-to-end test in live mode | ✅ First run done | `python scripts/e2e_live.py --api <url>`. Live run: 69 pass, 7 fail. **Works:** upload → classify (11/11), seeded legal holds block approval (409), approve / restore / re-approve / reject, audit log + integrity check, certificate PDF. **Found + fixed:** browser uploads 403 (SigV2 presign) → SigV4, needs redeploy. **Open (process handler, Anwesh):** `EXPIRED_PII` is recommended RETAIN instead of DELETE (2016 + 2017 client lists); W-9 batch classified PERSONAL; account export PDF classified ACCOUNT_STATEMENT/RETAIN; potluck recipes UNKNOWN/REVIEW. The handler's own if/else decides instead of the rules engine (B.1/B.2) |
 | F.9 | Frontend works behind the online VS Code proxy (`/ports/5173/`) | 🟡 PR open | Router now reads `VITE_ROUTER_BASE` (set by `npm run online`); checked a `--base ./` build served under `/ports/5173/`: pages load, nav links carry the prefix, fonts load. `npm run dev` unchanged |
+| B.2 | Wire the rules engine (B.1) into the process Lambda | 🟡 In progress | Unclaimed. `backend/shared/` isn't deployed (AGENTS.md), so the handler still decides with its own if/else; live E2E showed expired PII → RETAIN. Fixes those 7 failures |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
 
