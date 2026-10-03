@@ -8,6 +8,7 @@ _s3 = None
 _dynamodb = None
 _macie = None
 _cognito = None
+_ses = None
 
 
 def s3():
@@ -33,6 +34,13 @@ def cognito():
     return _cognito
 
 
+def ses():
+    global _ses
+    if _ses is None:
+        _ses = boto3.client("ses")
+    return _ses
+
+
 def user_pool_id():
     pool = os.environ.get("USER_POOL_ID")
     if not pool:
@@ -54,8 +62,9 @@ def bucket():
 
 def reset():
     """Drop cached clients (tests)."""
-    global _s3, _dynamodb, _macie, _cognito
+    global _s3, _dynamodb, _macie, _cognito, _ses
     _s3 = None
     _dynamodb = None
     _macie = None
     _cognito = None
+    _ses = None
