@@ -163,6 +163,19 @@ Resources:
               Action:
                 - s3:PutObjectRetention # locking files in records/ (D.7)
               Resource: !Sub "${FilesBucket.Arn}/records/*"
+            # Purge (D.4) deletes every stored version; S3CrudPolicy only covers the current one.
+            # Not records/: locked records stay undeletable.
+            - Effect: Allow
+              Action:
+                - s3:ListBucketVersions
+              Resource: !GetAtt FilesBucket.Arn
+            - Effect: Allow
+              Action:
+                - s3:DeleteObjectVersion
+              Resource:
+                - !Sub "${FilesBucket.Arn}/uploads/*"
+                - !Sub "${FilesBucket.Arn}/quarantine/*"
+                - !Sub "${FilesBucket.Arn}/restored/*"
             - Effect: Allow
               Action:
                 - macie2:CreateClassificationJob

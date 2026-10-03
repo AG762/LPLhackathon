@@ -88,3 +88,28 @@ def test_sweep_purges_only_files_past_their_grace_period(aws, s3):
     assert status == 200 and body == {"purged": ["old"]}
     assert call("GET", "/files/old")[1]["status"] == "PURGED"
     assert call("GET", "/files/new")[1]["status"] == "QUARANTINED"
+
+
+def test_a_refused_version_delete_is_not_reported_as_purged(aws, s3, monkeypatch):
+    # delete_objects with Quiet=True reports refused keys in Errors instead of raising.
+    import aws as aws_clients
+    monkeypatch.setenv("DEMO_CONTROLS", "true")
+    quarantine(aws, s3, "a")
+    client = aws_clients.s3()
+    monkeypatch.setattr(client, "delete_objects", lambda **kw: {"Errors": [
+        {"Key": kw["Delete"]["Objects"][0]["Key"], "Code": "AccessDenied", "Message": "Access Denied"}]})
+
+    status, body = call("POST", "/files/a/purge")
+
+    assert status == 502
+    assert "AccessDenied" in body["error"]
+    assert call("GET", "/files/a")[1]["status"] == "QUARANTINED"
+
+
+def test_the_api_function_may_list_and_delete_object_versions():
+    # moto doesn't enforce IAM, so check the template grants what purge calls (S3CrudPolicy doesn't).
+    import os
+    template = open(os.path.join(os.path.dirname(__file__), "..", "..", "infra", "template.yaml")).read()
+    api = template[template.index("  ApiFunction:"):template.index("FunctionUrlConfig")]
+    assert "s3:ListBucketVersions" in api
+    assert "s3:DeleteObjectVersion" in api

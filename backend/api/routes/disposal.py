@@ -183,7 +183,13 @@ def _delete_all_versions(file_id):
         doomed = [{"Key": v["Key"], "VersionId": v["VersionId"]}
                   for page in pages for v in page.get("Versions", []) + page.get("DeleteMarkers", [])]
         for i in range(0, len(doomed), 1000):
-            s3.delete_objects(Bucket=aws.bucket(), Delete={"Objects": doomed[i:i + 1000], "Quiet": True})
+            res = s3.delete_objects(Bucket=aws.bucket(), Delete={"Objects": doomed[i:i + 1000], "Quiet": True})
+            # Quiet mode reports refused keys in Errors instead of raising; a partial purge is a failure.
+            if res.get("Errors"):
+                first = res["Errors"][0]
+                raise ClientError({"Error": {"Code": first.get("Code", "DeleteFailed"),
+                                             "Message": f"{first.get('Key')}: {first.get('Message', '')}"}},
+                                  "DeleteObjects")
 
 
 def _grace_over(file):
@@ -194,9 +200,10 @@ def _grace_over(file):
 def _purge(file):
     try:
         _delete_all_versions(file["fileId"])
-    except ClientError:
+    except ClientError as e:
         logger.exception("Purge failed for %s", file["fileId"])
-        raise HttpError(502, "Could not delete the file from storage; it is still quarantined")
+        code = e.response.get("Error", {}).get("Code", "unknown")
+        raise HttpError(502, f"Could not delete the file from storage ({code}); it is still quarantined")
     updated = _set_status(file["fileId"], "QUARANTINED", "PURGED", purgedAt=_now().isoformat())
     audit_log.append("system:api", "PURGED", updated, file.get("ruleApplied"),
                      detail="all stored versions permanently deleted")
