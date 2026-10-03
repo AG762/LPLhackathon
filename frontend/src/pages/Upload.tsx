@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { formatBytes } from '../lib/format'
@@ -39,7 +39,15 @@ async function filesFromEntry(entry: FileSystemEntry, prefix = ''): Promise<{ fi
 }
 
 // After a batch lands, the sensitive-data scan starts by itself (F.19), unless one is already running.
-type ScanNote = { kind: 'started'; startedAt: string } | { kind: 'busy' } | { kind: 'failed'; message: string }
+type ScanNote =
+  | { kind: 'waiting'; ready: number; total: number }
+  | { kind: 'started'; startedAt: string }
+  | { kind: 'done' }
+  | { kind: 'busy' }
+  | { kind: 'failed'; message: string }
+
+const CLASSIFY_WAIT_MS = 3 * 60_000 // give up waiting for classification after this and scan anyway
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const isJunk = (name: string) => name.startsWith('.') || name === 'Thumbs.db' || name === 'desktop.ini'
 
@@ -48,6 +56,14 @@ export default function UploadPage() {
   const [dragging, setDragging] = useState(false)
   const [running, setRunning] = useState(false)
   const [scanNote, setScanNote] = useState<ScanNote | null>(null)
+  // Stops the background waits when you leave the page (the scan itself keeps running on the server).
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
   const { refresh } = useFiles()
@@ -64,16 +80,16 @@ export default function UploadPage() {
     setRunning(true)
 
     let next = 0
-    let uploaded = 0
+    const uploadedIds: string[] = []
     const worker = async () => {
       while (next < fresh.length) {
         const it = fresh[next++]
         update(it.key, { state: 'uploading' })
         try {
-          const { url, headers } = await api.uploadUrl(it.file.name)
+          const { fileId, url, headers } = await api.uploadUrl(it.file.name)
           await api.putFile(url, it.file, (p) => update(it.key, { progress: p }), headers)
           update(it.key, { state: 'done', progress: 1 })
-          uploaded++
+          uploadedIds.push(fileId)
         } catch (e) {
           update(it.key, { state: 'failed', error: e instanceof Error ? e.message : String(e) })
         }
@@ -82,22 +98,45 @@ export default function UploadPage() {
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, fresh.length) }, worker))
     setRunning(false)
     void refresh()
-    if (uploaded > 0) void scanAfterUpload()
+    if (uploadedIds.length > 0) void scanAfterUpload(uploadedIds)
   }
 
   // Classification already happens per file as it lands; this starts the slower sensitive-data scan so the
   // queue can rank the new files by exposure without anyone having to remember to click.
-  async function scanAfterUpload() {
+  //
+  // It waits until every new file has been classified first: a file's upload time is recorded when it's
+  // classified, and a scan only counts files recorded before it started. Starting too early left the last
+  // few files out (QA, F.23).
+  async function scanAfterUpload(ids: string[]) {
     try {
+      const want = new Set(ids)
+      const deadline = Date.now() + CLASSIFY_WAIT_MS
+      for (;;) {
+        const listed = await api.listFiles()
+        const ready = listed.filter((f) => want.has(f.fileId) && f.docType).length
+        if (!alive.current) return
+        setScanNote({ kind: 'waiting', ready, total: want.size })
+        if (ready >= want.size || Date.now() > deadline) break
+        await sleep(2000)
+      }
       const status = await api.scanStatus()
       if (status.state === 'RUNNING') {
-        setScanNote({ kind: 'busy' })
+        if (alive.current) setScanNote({ kind: 'busy' })
         return
       }
       await api.startScan()
+      if (!alive.current) return
       setScanNote({ kind: 'started', startedAt: new Date().toISOString() })
+      // Follow it here too, so the page doesn't sit on "finishing up" after it's done.
+      for (;;) {
+        await sleep(5000)
+        if (!alive.current) return
+        const s = await api.scanStatus()
+        if (s.state === 'COMPLETE') return setScanNote({ kind: 'done' })
+        if (s.state === 'FAILED') return setScanNote({ kind: 'failed', message: 'the scan was cancelled' })
+      }
     } catch (e) {
-      setScanNote({ kind: 'failed', message: e instanceof Error ? e.message : String(e) })
+      if (alive.current) setScanNote({ kind: 'failed', message: e instanceof Error ? e.message : String(e) })
     }
   }
 
@@ -136,6 +175,21 @@ export default function UploadPage() {
 
       <div
         className={`dropzone ${dragging ? 'dropzone-over' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-label="Choose files to upload, or drop a folder here"
+        // The whole area opens the file picker, not just the buttons (F.23)
+        onClick={(e) => {
+          // Ignore clicks from the buttons and from the hidden inputs themselves: input.click() bubbles up to here,
+          // and opening a second picker in the same click cancels the first, so neither opened.
+          if (!(e.target as HTMLElement).closest('button, input')) fileInput.current?.click()
+        }}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+            e.preventDefault()
+            fileInput.current?.click()
+          }
+        }}
         onDragOver={(e) => {
           e.preventDefault()
           setDragging(true)
@@ -230,6 +284,22 @@ function ScanNoteLine({ note, fileCount }: { note: ScanNote; fileCount: number }
     return (
       <p className="upload-scan upload-scan-failed" role="status">
         Couldn't start the sensitive-data scan ({note.message}). Start it from the review queue.
+      </p>
+    )
+  }
+  if (note.kind === 'waiting') {
+    return (
+      <p className="upload-scan" role="status">
+        <strong>Classifying your files</strong> ({note.ready} of {note.total} done). The sensitive-data scan starts as
+        soon as they're all in.
+      </p>
+    )
+  }
+  if (note.kind === 'done') {
+    return (
+      <p className="upload-scan" role="status">
+        <strong>Sensitive-data scan finished.</strong> Open the review queue and choose{' '}
+        <strong>Show sensitive-data results</strong> to rank the files by exposure.
       </p>
     )
   }

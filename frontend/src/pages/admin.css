@@ -157,6 +157,14 @@
   display: block;
   font-size: 0.84rem;
   color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person,
+.person > span:last-child {
+  min-width: 0;
 }
 
 .role-key {
@@ -260,10 +268,41 @@
 
 .released summary {
   display: inline-flex;
+  align-items: center;
   gap: 8px;
   margin-bottom: 12px;
   font-weight: 600;
   cursor: pointer;
+  list-style: none;
+}
+
+.released summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A chevron that turns when open, so it reads as something you can expand (F.23) */
+.released summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 200ms var(--ease-out);
+}
+
+.released[open] summary::before {
+  transform: rotate(45deg);
+}
+
+.released summary:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Disabled people: dim the details, not the "Turn back on" button */
+.member-disabled td:not(.admin-actions) {
+  opacity: 0.55;
 }
 
 .admin-unavailable {
@@ -289,5 +328,36 @@
   }
   .admin-fields .btn {
     flex: 1 1 100%;
+  }
+}
+
+/* Phones: tables become stacked cards so nothing hides off to the side (QA, F.23). */
+@media (max-width: 640px) {
+  .admin-table-wrap {
+    overflow-x: visible;
+  }
+  .admin-table thead {
+    display: none;
+  }
+  .admin-table,
+  .admin-table tbody {
+    display: block;
+  }
+  .admin-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .admin-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+  .admin-table td.admin-actions {
+    grid-column: 1 / -1;
+    text-align: left;
   }
 }

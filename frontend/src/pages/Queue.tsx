@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type Ref } from 'react'
+import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { api, ApiError } from '../api/client'
@@ -57,6 +57,23 @@ function matchesQuery(f: FileRecord, q: string) {
 // Serious tool: springs settle without overshoot.
 const REORDER = { type: 'spring', bounce: 0, visualDuration: 0.45 } as const
 const EASE_OUT = [0.16, 1, 0.3, 1] as const
+
+// Left/Right/Home/End move between tabs, as screen-reader users expect from role="tablist" (F.23).
+function tabArrows(e: ReactKeyboardEvent<HTMLElement>) {
+  const tabs = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+  const i = tabs.indexOf(document.activeElement as HTMLButtonElement)
+  if (i < 0) return
+  const next =
+    e.key === 'ArrowRight' ? (i + 1) % tabs.length
+    : e.key === 'ArrowLeft' ? (i - 1 + tabs.length) % tabs.length
+    : e.key === 'Home' ? 0
+    : e.key === 'End' ? tabs.length - 1
+    : -1
+  if (next < 0) return
+  e.preventDefault()
+  tabs[next].focus()
+  tabs[next].click()
+}
 
 function errorMessage(e: unknown) {
   return e instanceof Error ? e.message : String(e)
@@ -361,12 +378,13 @@ export default function QueuePage() {
         </div>
       )}
 
-      <div className="tabs" role="tablist" aria-label="Filter by status">
+      <div className="tabs" role="tablist" aria-label="Filter by status" onKeyDown={(e) => tabArrows(e)}>
         {FILTERS.map((f) => (
           <button
             key={f.value}
             role="tab"
             aria-selected={filter === f.value}
+            tabIndex={filter === f.value ? 0 : -1}
             className="tab"
             onClick={() => setFilter(f.value)}
           >
@@ -428,7 +446,7 @@ export default function QueuePage() {
       )}
 
       <section className="queue" aria-label="Files">
-        <div className="queue-head">
+        <div className="queue-head" hidden={loaded && visible.length === 0}>
           <label className="check">
             <input
               type="checkbox"
@@ -630,7 +648,9 @@ function Row({ ref, file: f, selected, expanded, busy, movedBy, fresh, onSeen, o
         </div>
 
         <button className="row-file" onClick={onToggleExpand} aria-expanded={expanded} aria-controls={detailsId}>
-          <span className="row-name">{name}</span>
+          <span className="row-name" title={name}>
+            <BreakableName name={name} />
+          </span>
           <span className="row-type">
             {docTypeLabel(f.docType)}
             {f.sizeBytes != null && `, ${formatBytes(f.sizeBytes)}`}
@@ -707,6 +727,21 @@ function Priority({ file: f }: { file: FileRecord }) {
   )
 }
 
+// Long file names have no spaces; let them wrap after _ - . instead of mid-word (QA, F.23).
+function BreakableName({ name }: { name: string }) {
+  const parts = name.split(/(?<=[_\-.])/)
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {part}
+          {i < parts.length - 1 && <wbr />}
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
 function RecommendationTag({ file: f }: { file: FileRecord }) {
   if (isOnHold(f)) return <Chip level="hold">LEGAL HOLD</Chip>
   switch (f.status) {
@@ -732,7 +767,22 @@ function RecommendationTag({ file: f }: { file: FileRecord }) {
 }
 
 function RowActions({ file: f, busy, onAct }: { file: FileRecord; busy: boolean; onAct: RowProps['onAct'] }) {
+  // Purging can't be undone, so it asks once more (QA, F.23)
+  const [confirmPurge, setConfirmPurge] = useState(false)
   if (f.status === 'QUARANTINED') {
+    if (confirmPurge) {
+      return (
+        <span className="purge-confirm" role="group" aria-label="Confirm permanent deletion">
+          <span className="row-note">Delete every copy for good?</span>
+          <button className="btn btn-small" disabled={busy} onClick={() => setConfirmPurge(false)} autoFocus>
+            Cancel
+          </button>
+          <button className="btn btn-small btn-danger" disabled={busy} onClick={() => onAct('purge')}>
+            Delete forever
+          </button>
+        </span>
+      )
+    }
     return (
       <>
         <button className="btn btn-small" disabled={busy} onClick={() => onAct('restore')}>
@@ -742,7 +792,7 @@ function RowActions({ file: f, busy, onAct }: { file: FileRecord; busy: boolean;
           <button
             className="btn btn-small btn-quiet btn-purge"
             disabled={busy}
-            onClick={() => onAct('purge')}
+            onClick={() => setConfirmPurge(true)}
             title="Demo only: skip the grace period and delete every stored copy now"
           >
             Purge now

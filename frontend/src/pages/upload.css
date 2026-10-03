@@ -11,6 +11,20 @@
   transition: border-color 0.2s, background-color 0.2s;
 }
 
+.dropzone {
+  cursor: pointer;
+}
+
+.dropzone:hover {
+  border-color: rgb(10 14 20 / 0.5);
+  background: #eceef1;
+}
+
+.dropzone:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
 .dropzone-over {
   border-color: var(--notice);
   background: var(--notice-wash);

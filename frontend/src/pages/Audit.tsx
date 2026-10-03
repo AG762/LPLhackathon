@@ -63,10 +63,6 @@ export default function AuditPage() {
     void load()
   }, [load])
 
-  useEffect(() => {
-    if (verify && !verify.ok) brokenRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [verify])
-
   async function recheck() {
     const v = await load()
     if (v) toast(v.ok ? 'Integrity check passed.' : `Integrity check failed at entry ${v.brokenAtSeq}.`, v.ok ? 'ok' : 'error')
@@ -200,7 +196,14 @@ export default function AuditPage() {
             ) : (
               <Sign level="danger" word="INTEGRITY CHECK FAILED">
                 <strong>Entry {broken} doesn't match its recorded hash</strong>, so it was changed after it was written.
-                Entries after it can't be relied on. Escalate to Compliance before using this log as exam evidence.
+                Entries after it can't be relied on. Escalate to Compliance before using this log as exam evidence.{' '}
+                <button
+                  type="button"
+                  className="btn btn-small btn-quiet"
+                  onClick={() => brokenRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                >
+                  Show entry {broken}
+                </button>
               </Sign>
             )}
           </motion.div>
