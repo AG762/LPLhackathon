@@ -9,4 +9,4 @@ capabilities = "CAPABILITY_IAM"
 resolve_s3 = true
 confirm_changeset = true
 # Demo stack only: allows the audit log tamper/restore rehearsal routes (STORIES.md E.3).
-parameter_overrides = "DemoControls=true"
+parameter_overrides = "DemoControls=true FrontendOrigin=https://d18wlstpxd4zq5.cloudfront.net"
