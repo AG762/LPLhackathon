@@ -8,9 +8,13 @@ import {
   confirmResetPassword,
   confirmSignUp,
   resendSignUpCode,
+  fetchAuthSession,
   resetPassword,
   signIn,
+  signOut,
   signUp,
+  updatePassword,
+  updateUserAttributes,
 } from 'aws-amplify/auth'
 import { setRememberMe, signInEnabled } from './config'
 import { refreshSession } from './session'
@@ -166,6 +170,40 @@ export const accountApi = {
     if (!validEmail(email)) throw new AccountError('Enter the email address you signed up with.')
     if (!signInEnabled) return pause()
     await cognito(() => resetPassword({ username: email.trim() }))
+  },
+
+  // ---------- Account page (P5) ----------
+
+  async updateName(name: string) {
+    if (!name.trim()) throw new AccountError('Enter your name.')
+    if (!signInEnabled) return pause()
+    await cognito(() => updateUserAttributes({ userAttributes: { name: name.trim() } }))
+    // The sidebar reads the name from the ID token, so get a fresh one
+    await cognito(() => fetchAuthSession({ forceRefresh: true }))
+    await refreshSession()
+  },
+
+  async changePassword(current: string, next: string) {
+    if (!current) throw new AccountError('Enter your current password.')
+    checkPassword(next)
+    if (current === next) throw new AccountError('Choose a password you haven’t used here before.')
+    if (!signInEnabled) return pause()
+    try {
+      await updatePassword({ oldPassword: current, newPassword: next })
+    } catch (e) {
+      // Here NotAuthorized means the current password was wrong, not that the account doesn't exist
+      if ((e as { name?: string }).name === 'NotAuthorizedException') {
+        throw new AccountError('Your current password isn’t right.')
+      }
+      throw friendly(e)
+    }
+  },
+
+  // Ends every session this account has (other browsers and devices too), then this one.
+  async signOutEverywhere() {
+    if (!signInEnabled) return pause()
+    await cognito(() => signOut({ global: true }))
+    await refreshSession()
   },
 
   async confirmReset(email: string, code: string, newPassword: string) {

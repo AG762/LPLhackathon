@@ -1,0 +1,94 @@
+/* Your account (P5): reuses the admin form styles (admin.css), laid out as stacked cards. */
+.account-grid {
+  display: grid;
+  gap: 4px;
+  max-width: 720px;
+}
+
+.account-grid .admin-form {
+  margin-bottom: 20px;
+}
+
+.account-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 0.8fr);
+  gap: 12px 24px;
+  margin: 6px 0 0;
+}
+
+.account-facts dt {
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+
+.account-facts dd {
+  margin: 2px 0 0;
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .account-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+.account-rules {
+  display: grid;
+  gap: 4px;
+  margin: -4px 0 2px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.account-rules li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-rules li > span:first-child {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #a3abb5;
+  border-radius: 50%;
+  transition: background-color 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+
+.account-rules .account-rule-ok {
+  color: var(--ink);
+}
+
+.account-rules .account-rule-ok > span:first-child {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.account-error {
+  padding: 10px 14px;
+  border: 1px solid rgb(180 35 24 / 0.3);
+  border-radius: 10px;
+  background: #fdf3f2;
+  color: #b42318;
+  font-size: 0.9rem;
+}
+
+.account-danger {
+  background: var(--ground);
+}
+
+.advisor-link,
+.advisor-link:hover {
+  display: block;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.advisor-link:hover .advisor-name,
+.advisor-link:hover .session-email {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
