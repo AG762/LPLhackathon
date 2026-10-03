@@ -17,6 +17,12 @@ const ACTION_LABELS: Record<string, string> = {
   PURGED: 'Permanently deleted',
   LOCKED: 'Locked as a record',
   SENSITIVITY_SCORED: 'Sensitive-data scan scored',
+  HOLD_PLACED: 'Legal hold placed',
+  HOLD_RELEASED: 'Legal hold released',
+  USER_INVITED: 'Person invited',
+  ROLE_CHANGED: 'Role changed',
+  USER_DISABLED: 'Access turned off',
+  USER_ENABLED: 'Access turned back on',
 }
 
 function actorLabel(actor: string) {

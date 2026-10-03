@@ -1,0 +1,293 @@
+/* Admin (F.15): forms, people table, legal holds, retention schedule. Uses the portal tokens in index.css. */
+
+.admin-panel {
+  padding-top: 28px;
+}
+
+.admin-form {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  margin-bottom: 32px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--layer);
+}
+
+.admin-form-title h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.admin-form-title p,
+.admin-intro {
+  margin-top: 4px;
+  max-width: 68ch;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+
+.admin-intro {
+  margin: 0 0 22px;
+}
+
+.admin-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 160px;
+}
+
+.field-grow {
+  flex: 1 1 260px;
+}
+
+.field > span {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.input {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #cdd2d8;
+  border-radius: 10px;
+  background: var(--ground);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+}
+
+.input::placeholder {
+  color: #6b7280;
+}
+
+.input:hover {
+  border-color: #9aa1aa;
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgb(10 14 20 / 0.12);
+}
+
+.input:disabled {
+  background: var(--layer);
+  color: var(--ink-2);
+}
+
+.input-small {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 0.88rem;
+}
+
+.admin-hint {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.admin-table-wrap {
+  position: relative; /* keeps the visually hidden header inside the scroll box */
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.93rem;
+}
+
+.admin-table th {
+  padding: 0 14px 10px 0;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 14px 14px 14px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: middle;
+}
+
+.admin-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--rule-strong);
+  color: var(--ground);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.person-name {
+  display: block;
+  font-weight: 500;
+}
+
+.person-email {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--ink-2);
+}
+
+.role-key {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin: 28px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.role-key dt {
+  font-weight: 600;
+}
+
+.role-key dd {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+.admin-subhead {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.hold-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hold {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--ground);
+  overflow: hidden;
+}
+
+.hold-main {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.hold-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.hold-scope {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.hold-reason {
+  margin-top: 8px;
+}
+
+.hold-meta {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.hold-release {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  flex: 1 1 100%;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.hold-release-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hold-released {
+  background: var(--layer);
+}
+
+.released {
+  margin-top: 28px;
+}
+
+.released summary {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-unavailable {
+  padding: 28px;
+  border: 1px dashed #cdd2d8;
+  border-radius: var(--radius);
+}
+
+.admin-unavailable h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.admin-unavailable p {
+  margin: 6px 0 16px;
+  max-width: 68ch;
+  color: var(--ink-2);
+}
+
+@media (max-width: 640px) {
+  .admin-form {
+    padding: 16px;
+  }
+  .admin-fields .btn {
+    flex: 1 1 100%;
+  }
+}
