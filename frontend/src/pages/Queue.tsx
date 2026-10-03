@@ -38,6 +38,8 @@ export default function QueuePage() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [scanState, setScanState] = useState<ScanState>('IDLE')
+  // A scan that finished while nobody was watching (Macie jobs take minutes, so the demo pre-runs one).
+  const [finishedScanWaiting, setFinishedScanWaiting] = useState(false)
   // After a scan re-sorts the queue, each row that moved up (got riskier) keeps a marker until the advisor has looked at it.
   const [moved, setMoved] = useState<Map<string, number>>(new Map())
   const orderBeforeScan = useRef<Map<string, number> | null>(null)
@@ -99,7 +101,10 @@ export default function QueuePage() {
   useEffect(() => {
     api
       .scanStatus()
-      .then((s) => setScanState(s.state === 'RUNNING' ? 'RUNNING' : 'IDLE'))
+      .then((s) => {
+        setScanState(s.state === 'RUNNING' ? 'RUNNING' : 'IDLE')
+        setFinishedScanWaiting(s.state === 'COMPLETE')
+      })
       .catch(() => {})
     return () => {
       if (scanTimer.current) window.clearTimeout(scanTimer.current)
@@ -112,11 +117,7 @@ export default function QueuePage() {
       try {
         const s = await api.scanStatus()
         if (s.state === 'COMPLETE') {
-          orderBeforeScan.current = new Map(visibleRef.current.map((f, i) => [f.fileId, i]))
-          const { updated } = await api.ingestScan()
-          await refresh()
-          setScanState('COMPLETE')
-          toast(`Scan finished. ${updated} files scored, riskiest first.`)
+          await applyScan()
           return
         }
         if (s.state === 'FAILED') {
@@ -136,8 +137,22 @@ export default function QueuePage() {
     }
   }, [scanState, refresh, toast])
 
+  // Pull the finished job's findings into the queue; rows re-sort by exposure.
+  async function applyScan() {
+    orderBeforeScan.current = new Map(visibleRef.current.map((f, i) => [f.fileId, i]))
+    const { updated } = await api.ingestScan()
+    await refresh()
+    setScanState('COMPLETE')
+    setFinishedScanWaiting(false)
+    toast(`Scan finished. ${updated} files scored, riskiest first.`)
+  }
+
   async function startScan() {
     try {
+      if (finishedScanWaiting && !scanned) {
+        await applyScan() // a finished job is waiting: no need to start another one
+        return
+      }
       await api.startScan()
       setScanState('RUNNING')
     } catch (e) {
@@ -226,7 +241,7 @@ export default function QueuePage() {
             Nothing is gone for good until the grace period ends.
           </p>
         </div>
-        <ScanControl state={scanState} scanned={scanned} onStart={startScan} />
+        <ScanControl state={scanState} scanned={scanned} ready={finishedScanWaiting && !scanned} onStart={startScan} />
       </header>
 
       {error && (
@@ -359,7 +374,17 @@ export default function QueuePage() {
   )
 }
 
-function ScanControl({ state, scanned, onStart }: { state: ScanState; scanned: boolean; onStart: () => void }) {
+function ScanControl({
+  state,
+  scanned,
+  ready,
+  onStart,
+}: {
+  state: ScanState
+  scanned: boolean
+  ready: boolean
+  onStart: () => void
+}) {
   if (state === 'RUNNING') {
     return (
       <div className="scan-running" role="status">
@@ -372,7 +397,7 @@ function ScanControl({ state, scanned, onStart }: { state: ScanState; scanned: b
   }
   return (
     <button className="btn" onClick={onStart}>
-      {scanned ? 'Scan for sensitive data again' : 'Scan for sensitive data'}
+      {ready ? 'Show sensitive-data results' : scanned ? 'Scan for sensitive data again' : 'Scan for sensitive data'}
     </button>
   )
 }
