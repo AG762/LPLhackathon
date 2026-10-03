@@ -97,3 +97,46 @@ export interface VerifyResult {
   ok: boolean
   brokenAtSeq?: number
 }
+
+// ---------- Admin (F.15) ----------
+// Roles match the Cognito groups in docs/login.md.
+export type Role = 'advisor' | 'compliance' | 'admin'
+export type MemberStatus = 'ACTIVE' | 'INVITED' | 'DISABLED'
+
+export interface Member {
+  userId: string
+  email: string
+  name?: string
+  role: Role
+  status: MemberStatus
+  branchId?: string
+  invitedAt?: string
+  lastActiveAt?: string
+}
+
+// Same shape as the LegalHolds table (AGENTS.md Rule 2), plus who placed or released it and how many files it covers.
+export type HoldScope = 'CLIENT_NAME' | 'CLIENT_ID' | 'ACCOUNT_ID' | 'BRANCH_ID' | 'KEYWORD'
+
+export interface LegalHold {
+  holdId: string
+  scopeType: HoldScope
+  scopeValue: string
+  reason: string
+  active: boolean
+  createdBy?: string
+  createdAt?: string
+  releasedBy?: string
+  releasedAt?: string
+  releaseReason?: string
+  matchedFiles?: number
+}
+
+// One row of config/retention_rules.json.
+export interface RetentionRule {
+  docType: string
+  retentionYears: number
+  trigger: string
+  action: 'RETAIN' | 'DELETE' | 'REVIEW'
+  citation: string
+  description: string
+}

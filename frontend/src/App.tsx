@@ -7,6 +7,7 @@ import QueuePage from './pages/Queue'
 import UploadPage from './pages/Upload'
 import DashboardPage from './pages/Dashboard'
 import AuditPage from './pages/Audit'
+import AdminPage from './pages/Admin'
 import HomePage from './pages/Home'
 import { BrandMark } from './components/BrandMark'
 
@@ -32,6 +33,8 @@ function Sidebar() {
         <NavLink to="/upload">Upload</NavLink>
         <NavLink to="/dashboard">Dashboard</NavLink>
         <NavLink to="/audit">Audit log</NavLink>
+        {/* Admins and compliance only once sign-in is on; the demo advisor is the firm's admin. */}
+        <NavLink to="/admin">Admin</NavLink>
       </nav>
       <div className="sidebar-foot">
         <div className="advisor">
@@ -82,6 +85,7 @@ export default function App() {
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/audit" element={<AuditPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
