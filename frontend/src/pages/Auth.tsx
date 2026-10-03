@@ -2,12 +2,12 @@ import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { BrandMark } from '../components/BrandMark'
-import { ACCOUNTS_ARE_PREVIEW, AccountError, PASSWORD_RULES, accountApi } from '../auth/accountApi'
+import { ACCOUNTS_ARE_PREVIEW, AccountError, NeedsConfirmation, PASSWORD_RULES, accountApi } from '../auth/accountApi'
 import { useToast } from '../state/toast'
 import './auth.css'
 
-// Sign in, sign up (with the emailed code) and password reset (F.16). UI only: every call goes through
-// auth/accountApi.ts, which pretends today and is where Cognito gets connected.
+// Sign in, sign up (with the emailed code) and password reset (F.16). Every call goes through
+// auth/accountApi.ts: Amazon Cognito when sign-in is configured, a preview otherwise.
 
 const EASE = [0.16, 1, 0.3, 1] as const
 const message = (e: unknown) => (e instanceof AccountError || e instanceof Error ? e.message : String(e))
@@ -232,7 +232,10 @@ function Step({ id, children }: { id: string; children: ReactNode }) {
 export function SignInPage() {
   const navigate = useNavigate()
   const toast = useToast()
-  const [email, setEmail] = useState('')
+  const location = useLocation()
+  // Set by RequireSignIn (auth/RequireSignIn.tsx) when a signed-out visitor opened a portal page
+  const next = (location.state as { from?: string } | null)?.from ?? '/dashboard'
+  const [email, setEmail] = useState(() => (location.state as { email?: string } | null)?.email ?? '')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -245,8 +248,13 @@ export function SignInPage() {
     try {
       await accountApi.signIn(email, password, remember)
       toast('Signed in.', 'ok')
-      navigate('/dashboard')
+      navigate(next, { replace: true })
     } catch (err) {
+      if (err instanceof NeedsConfirmation) {
+        toast(err.message, 'ok')
+        navigate('/signup', { state: { confirmEmail: err.email } })
+        return
+      }
       setError(message(err))
     } finally {
       setBusy(false)
@@ -302,9 +310,12 @@ export function SignInPage() {
 export function SignUpPage() {
   const navigate = useNavigate()
   const toast = useToast()
-  const [step, setStep] = useState<'details' | 'code'>('details')
+  const location = useLocation()
+  // Sign-in sends unconfirmed accounts here with their email, straight to the code step
+  const confirmEmail = (location.state as { confirmEmail?: string } | null)?.confirmEmail
+  const [step, setStep] = useState<'details' | 'code'>(confirmEmail ? 'code' : 'details')
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(confirmEmail ?? '')
   const [firm, setFirm] = useState('')
   const [password, setPassword] = useState('')
   const [agreed, setAgreed] = useState(false)
@@ -336,9 +347,15 @@ export function SignUpPage() {
     setBusy(true)
     setError(null)
     try {
-      await accountApi.confirmSignUp(email, code)
-      toast(`Welcome, ${name.split(' ')[0]}. Your workspace is ready.`, 'ok')
-      navigate('/dashboard')
+      const signedIn = await accountApi.confirmSignUp(email, code)
+      if (signedIn) {
+        const first = name.trim().split(' ')[0]
+        toast(first ? `Welcome, ${first}. Your workspace is ready.` : 'Your workspace is ready.', 'ok')
+        navigate('/dashboard', { replace: true })
+      } else {
+        toast('Email confirmed. Sign in to continue.', 'ok')
+        navigate('/signin', { state: { email } })
+      }
     } catch (err) {
       setError(message(err))
     } finally {

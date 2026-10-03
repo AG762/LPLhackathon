@@ -20,11 +20,15 @@ This doc is also the answer to "how would users log in?" on stage.
   files (others' files are 404) whatever their role; dashboard, audit list, certificate and scan results cover only
   their files. `/audit/verify` still checks the whole chain but only answers ok / broken-at.
   Uploads without sign-in carry no owner, so the demo and older frontends work unchanged.
-- Frontend: `src/auth/`. **ShredSafe's own sign-in and sign-up forms** (no trip to a Cognito-hosted page), talking
-  to Cognito through Amplify Auth (SRP, so the password never crosses the wire): sign in, create account, email
-  code, resend code, forgot password, new-password-required and authenticator-code steps. Shown in Live mode when
-  `VITE_COGNITO_USER_POOL_ID` and `VITE_COGNITO_CLIENT_ID` are set; the ID token goes on every API call (refreshed
-  automatically); a 401 signs you out locally; the sidebar shows the email, role and **Sign out**.
+- Frontend: Aryan's pages at `/signin`, `/signup`, `/forgot` (`src/pages/Auth.tsx`) call `src/auth/accountApi.ts`,
+  which uses Amazon Cognito through Amplify Auth (SRP) when `VITE_COGNITO_USER_POOL_ID` and `VITE_COGNITO_CLIENT_ID`
+  are set in Live mode, and pretends otherwise (Sample mode). `RequireSignIn` guards the portal routes (`/queue`,
+  `/upload`, `/dashboard`, `/audit`, `/admin`) and returns you to the page you wanted; the home page and the sign-in
+  pages stay public and, while signed out, make no API calls (no other advisor's file names or audit entries).
+  The ID token goes on every API call (refreshed automatically); "Keep me signed in" picks persistent or tab-only
+  token storage; the sidebar shows the name or email, role and **Sign out**. Sign-up stores `name` and `custom:firm`.
+  Not handled on these pages yet: the new-password step for invited accounts and authenticator (MFA) codes; the
+  page explains instead.
 - **Self sign-up** (`AllowSignUp`, default on): any independent advisor can create an account from the sign-in page and
   confirms their email with a code. `backend/signup/` (post-confirmation trigger) adds every new account to `advisor`,
   so it can use the app straight away; per-advisor visibility means it starts with an empty queue.

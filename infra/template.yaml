@@ -220,6 +220,11 @@ Resources:
       UserPoolName: !Sub "${AWS::StackName}-users"
       UsernameAttributes: [email]
       AutoVerifiedAttributes: [email]
+      Schema: # sign-up asks for name (a standard attribute) and firm (custom:firm), see frontend/src/pages/Auth.tsx
+        - Name: firm
+          AttributeDataType: String
+          Mutable: true
+          StringAttributeConstraints: { MinLength: "1", MaxLength: "128" }
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: !If [SignUpAllowed, false, true] # AllowSignUp parameter
       AccountRecoverySetting: # "Forgot password" codes go to the verified email (never SMS; there's no phone)
