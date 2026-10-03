@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { api } from '../api/client'
+import { signInEnabled } from '../auth/config'
+import { useOptionalSession } from '../auth/session'
 import { Chip } from '../components/Sign'
 import { DEMO_ADVISOR, docTypeLabel, fileName, formatDate } from '../lib/format'
 import { useFiles } from '../state/files'
@@ -44,13 +47,51 @@ function wouldMatch(scope: HoldScope, value: string, f: FileRecord) {
   return fileName(f).toLowerCase().includes(v)
 }
 
+// The page checks the role itself, not just the sidebar link: an advisor who types /admin gets a plain
+// "no access" screen. People is for admins; compliance manages holds and reads the rules. The API checks
+// the same roles, so this is about not showing controls that would fail.
 export default function AdminPage() {
-  const [tab, setTab] = useState<Tab>('team')
+  const auth = useOptionalSession()
+  if (signInEnabled && (!auth || auth.session.status === 'loading')) {
+    return (
+      <p className="muted" role="status">
+        Checking your access…
+      </p>
+    )
+  }
+  // Without sign-in (sample workspace) the demo advisor is the firm's admin.
+  const role = !signInEnabled ? 'admin' : auth?.session.status === 'signedIn' ? auth.session.role : null
+  const canManagePeople = role === 'admin' || role === 'platform'
+  const canManageHolds = canManagePeople || role === 'compliance'
+
+  if (!canManageHolds) {
+    return (
+      <>
+        <header className="page-head">
+          <div>
+            <h1>Admin</h1>
+            <p>
+              Only your firm's admins and compliance team can manage people and legal holds. Ask one of them if you
+              need a hold placed or someone added.
+            </p>
+          </div>
+        </header>
+        <Link className="btn btn-primary" to="/queue">
+          Back to the review queue
+        </Link>
+      </>
+    )
+  }
+  return <AdminTabs canManagePeople={canManagePeople} />
+}
+
+function AdminTabs({ canManagePeople }: { canManagePeople: boolean }) {
+  const [tab, setTab] = useState<Tab>(canManagePeople ? 'team' : 'holds')
   const [counts, setCounts] = useState<Record<Tab, number | undefined>>({ team: undefined, holds: undefined, rules: undefined })
   const setCount = useCallback((t: Tab, n: number) => setCounts((c) => (c[t] === n ? c : { ...c, [t]: n })), [])
 
   const tabs: { value: Tab; label: string }[] = [
-    { value: 'team', label: 'People' },
+    ...(canManagePeople ? [{ value: 'team' as const, label: 'People' }] : []),
     { value: 'holds', label: 'Legal holds' },
     { value: 'rules', label: 'Retention rules' },
   ]
