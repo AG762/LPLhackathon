@@ -158,7 +158,7 @@ export default function DashboardPage() {
                       : 'None left to review.'
                 }
                 tone={undefined}
-                link={!scanned || m.highPriorityBacklog ? { to: '/', text: 'Open the review queue' } : undefined}
+                link={!scanned || m.highPriorityBacklog ? { to: '/queue', text: 'Open the review queue' } : undefined}
               />
               <Measure label="Kept longer than required" value={pct(m.overRetainedPct)} note="Share of your files that were past their retention date when found" />
               <Measure
