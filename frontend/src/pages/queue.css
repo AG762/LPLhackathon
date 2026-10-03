@@ -66,7 +66,7 @@
 .tab-count {
   font-size: 0.74rem;
   font-weight: 600;
-  min-width: 22px;
+  min-width: 30px;
   padding: 1px 7px;
   border-radius: 999px;
   text-align: center;
@@ -111,6 +111,13 @@
   border-bottom: 1px solid var(--rule);
   position: relative;
   background: var(--ground);
+  transition: background-color 180ms var(--ease-out);
+}
+
+@media (hover: hover) {
+  .row:hover {
+    background: #fafbfc;
+  }
 }
 
 .row-main {
@@ -136,6 +143,11 @@
   height: 18px;
   accent-color: var(--primary);
   cursor: pointer;
+}
+
+.check input:hover:not(:disabled) {
+  outline: 2px solid rgb(10 14 20 / 0.14);
+  outline-offset: 2px;
 }
 
 .check input:disabled {
@@ -208,6 +220,7 @@
   border: 1px solid rgb(10 14 20 / 0.3);
   border-radius: 999px;
   padding: 1px 7px;
+  margin-right: 8px;
 }
 
 .moved svg {
@@ -236,8 +249,16 @@
   white-space: nowrap;
 }
 
+.row-name {
+  text-decoration: underline transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 180ms var(--ease-out);
+}
+
 .row-file:hover .row-name {
   text-decoration: underline;
+  text-decoration-color: currentColor;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
@@ -447,7 +468,8 @@
 @media (max-width: 1180px) {
   .queue-head,
   .row-main {
-    grid-template-columns: 32px 140px minmax(0, 1fr) 140px 172px;
+    grid-template-columns: 32px 108px minmax(0, 1fr) 118px 156px;
+    gap: 12px;
   }
   .queue-head > :nth-child(5),
   .row-keep {
@@ -455,7 +477,7 @@
   }
   .hold-sign,
   .details-grid {
-    margin-left: 200px;
+    margin-left: 166px;
   }
 }
 
@@ -475,7 +497,7 @@
   /* the file name is what's being approved, so show all of it */
   .row-name {
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
   .row-main > .check {
     grid-area: check;
@@ -682,4 +704,29 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Purge confirmation (F.23) */
+.purge-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-danger {
+  background: #b42318;
+  border-color: #b42318;
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #8f1c13;
+  border-color: #8f1c13;
+  color: #fff;
+}
+
+.bulk-bar .btn-quiet {
+  text-decoration: none;
 }

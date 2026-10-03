@@ -206,6 +206,15 @@ html.au-root body {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
+  text-decoration-color: rgb(10 14 20 / 0.35);
+  transition: text-decoration-color 180ms var(--au-ease), text-decoration-thickness 180ms var(--au-ease);
+}
+
+.au-hint a:hover,
+.au-switch a:hover,
+.au-link:hover {
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 2px;
 }
 
 .au-link {
@@ -225,6 +234,7 @@ html.au-root body {
 }
 
 .au-reveal {
+  transition: background-color 150ms var(--au-ease), color 150ms var(--au-ease);
   position: absolute;
   top: 50%;
   right: 8px;

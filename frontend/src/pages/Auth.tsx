@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { BrandMark } from '../components/BrandMark'
 import { ACCOUNTS_ARE_PREVIEW, AccountError, NeedsConfirmation, PASSWORD_RULES, accountApi } from '../auth/accountApi'
 import { useToast } from '../state/toast'
+import { usePageTitle } from '../lib/title'
 import './auth.css'
 
 // Sign in, sign up (with the emailed code) and password reset (F.16). Every call goes through
@@ -230,6 +231,7 @@ function Step({ id, children }: { id: string; children: ReactNode }) {
 // ---------- Sign in ----------
 
 export function SignInPage() {
+  usePageTitle('Sign in')
   const navigate = useNavigate()
   const toast = useToast()
   const location = useLocation()
@@ -308,6 +310,7 @@ export function SignInPage() {
 // ---------- Sign up ----------
 
 export function SignUpPage() {
+  usePageTitle('Create your workspace')
   const navigate = useNavigate()
   const toast = useToast()
   const location = useLocation()
@@ -326,8 +329,22 @@ export function SignUpPage() {
 
   async function create(e: FormEvent) {
     e.preventDefault()
-    if (!agreed) {
-      setError('Confirm the files you upload are your firm’s to manage.')
+    // Check fields top to bottom, so the first message is about the first thing to fix, and put the
+    // cursor there (F.23). The checkbox comes last, as it does on the form.
+    const form = e.currentTarget as HTMLFormElement
+    const problem: [string, string] | null =
+      !name.trim() ? ['name', 'Enter your name.']
+      : !firm.trim() ? ['organization', "Enter your firm's name."]
+      : !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) ? ['email', 'Enter a valid work email address.']
+      : PASSWORD_RULES.some((r) => r.required && !r.test(password)) ? ['new-password', 'Choose a password of at least 12 characters.']
+      : !agreed ? ['checkbox', 'Confirm the files you upload are your firm’s to manage.']
+      : null
+    if (problem) {
+      setError(problem[1])
+      const field = form.querySelector<HTMLInputElement>(
+        problem[0] === 'checkbox' ? 'input[type="checkbox"]' : `input[autocomplete="${problem[0]}"]`,
+      )
+      field?.focus()
       return
     }
     setBusy(true)
@@ -475,6 +492,7 @@ export function SignUpPage() {
 // ---------- Forgot password ----------
 
 export function ForgotPasswordPage() {
+  usePageTitle('Reset your password')
   const navigate = useNavigate()
   const toast = useToast()
   const location = useLocation()

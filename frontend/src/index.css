@@ -359,6 +359,7 @@ a:hover {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
+    align-content: flex-start; /* same header height on every page (F.23) */
     gap: 12px;
     padding: 14px 16px 10px;
     min-width: 0;
@@ -480,6 +481,7 @@ a:hover {
   position: fixed;
   right: 20px;
   bottom: 20px;
+  transition: bottom 250ms var(--ease-out);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -700,4 +702,14 @@ a:hover {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Toasts rise above the queue's bulk-action bar while it's showing, so they never cover its buttons (F.23). */
+body:has(.bulk-bar) .toasts {
+  bottom: 96px;
+}
+
+/* Focus rings on the dark sidebar need a light colour to be visible (F.23) */
+.sidebar :focus-visible {
+  outline-color: #cfe2ff;
 }

@@ -34,7 +34,7 @@ function breakdown(files: FileRecord[]): Segment[] {
 }
 
 export default function DashboardPage() {
-  const { files } = useFiles()
+  const { files, loaded } = useFiles()
   const [server, setServer] = useState<DashboardMetrics | null>(null)
   const [fallbackReason, setFallbackReason] = useState<string | null>(null)
   const filesKey = files.map((f) => `${f.fileId}:${f.status}:${f.priority ?? ''}`).join('|')
@@ -82,7 +82,12 @@ export default function DashboardPage() {
         </Sign>
       )}
 
-      {m.totalFiles === 0 ? (
+      {!loaded && !server ? (
+        // Until the file list arrives, don't claim there's nothing to report (QA, F.23)
+        <p className="muted dash-loading" role="status">
+          Loading your numbers…
+        </p>
+      ) : m.totalFiles === 0 ? (
         <div className="panel empty">
           <h2>Nothing to report yet</h2>
           <p>Upload files and approve some deletions, and your results will show up here.</p>

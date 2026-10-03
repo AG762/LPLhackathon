@@ -166,7 +166,7 @@ function People({ onCount, selfEmail }: { onCount: (n: number) => void; selfEmai
     try {
       const list = await api.listMembers()
       setMembers(list)
-      onCount(list.filter((m) => m.status !== 'DISABLED').length)
+      onCount(list.length)
       setError(null)
     } catch (e) {
       setError(errorText(e))
@@ -286,7 +286,8 @@ function People({ onCount, selfEmail }: { onCount: (n: number) => void; selfEmai
                       key={m.userId}
                       layout
                       initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: m.status === 'DISABLED' ? 0.55 : 1, y: 0 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={m.status === 'DISABLED' ? 'member-disabled' : undefined}
                       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     >
                       <td>
@@ -549,6 +550,7 @@ function Holds({ onCount }: { onCount: (n: number) => void }) {
                           placeholder="e.g. Case settled; counsel confirmed in writing"
                           value={releaseReason}
                           onChange={(e) => setReleaseReason(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Escape' && setReleasing(null)}
                         />
                       </label>
                       <div className="hold-release-actions">
