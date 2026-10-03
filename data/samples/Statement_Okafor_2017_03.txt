@@ -1,0 +1,9 @@
+LPL FINANCIAL ACCOUNT STATEMENT
+Statement period: 2017-03-01 to 2017-03-31
+Client: Daniel Okafor
+Account: LPL-551204
+
+Beginning value      $214,880.10
+Deposits                  $0.00
+Withdrawals           $1,200.00
+Ending value         $216,258.66

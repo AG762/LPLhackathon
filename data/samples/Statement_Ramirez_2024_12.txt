@@ -1,0 +1,9 @@
+LPL FINANCIAL ACCOUNT STATEMENT
+Statement period: 2024-12-01 to 2024-12-31
+Client: Rafael Ramirez
+Account: LPL-640288
+
+Beginning value      $156,730.42
+Deposits                  $0.00
+Withdrawals           $1,200.00
+Ending value         $157,411.19
