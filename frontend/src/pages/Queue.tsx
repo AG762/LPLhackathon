@@ -548,7 +548,7 @@ function ScanControl({
   if (state === 'RUNNING') {
     return (
       <div className="scan-running" role="status">
-        <span>Scanning for SSNs, account numbers and birth dates</span>
+        <span>Scanning for personal data</span>
         <span className="scan-track" aria-hidden="true">
           <span />
         </span>
