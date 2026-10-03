@@ -112,8 +112,9 @@ _Last updated: 2026-10-02_
 | F.21 | Place a legal hold from a file in the queue (P2); export the audit log as CSV (P3); feature proposals P2–P9 | 🔵 In review (PR #32) | See docs/feature-proposals.md for must-haves |
 | F.22 | Account page: name, password, sign out on every device (P5) | 🔵 In review (PR #33) | Two-step sign-in waits for the sign-in code step (joint with Arihant) |
 | G.5 | Load-test generator + measured 1,000-file run; faster queue search at volume | 🔵 In review (PR #34) | docs/load-testing.md. Practical limit today ~1–2k files per workspace (6 MB /files response); P7 to scale |
-| F.23 | Fixes from the full QA pass: portal (auto-scan timing, toast over bulk bar, purge confirm, dashboard flash, 1024px queue, mobile admin table, hovers, focus, forms, titles) | 🔵 In review (PR #36) | Home-page items go to the home polish branch |
-| F.24 | Home page: lit product-shot hero (machined shredder, glass bin), no load freeze, nav + section polish | 🔵 In review (PR #37) | Researched on 21st.dev + Awwwards. 3D still lazy-loaded |
+| F.23 | Fixes from the full QA pass: portal (auto-scan timing, toast over bulk bar, purge confirm, dashboard flash, 1024px queue, mobile admin table, hovers, focus, forms, titles) | ✅ Done (PR #36) | Home-page items go to the home polish branch |
+| F.24 | Home page: lit product-shot hero (machined shredder, glass bin), no load freeze, nav + section polish | ✅ Done (PR #37) | Researched on 21st.dev + Awwwards. 3D still lazy-loaded |
+| F.25 | Auto-scan on the server: starts the sensitive-data scan once uploads settle, even if nobody keeps the Upload page open | 🔵 In review (PR #38) | Runs every 2 min; leaves cancelled scans to a person |
 | — | `docs/feature-proposals.md` (P1: scan only new or changed files) | ✅ Merged (PR #17) | Team to set the Decision column; mark ✅ there if built |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
