@@ -99,8 +99,9 @@ _Last updated: 2026-10-02_
 | F.11 | Only offer "Show sensitive-data results" for a scan newer than the files | ✅ Done (PR #16; workshop needs git pull + npm run online) | Button offers a finished scan only if it started at or after the newest upload; otherwise it starts a new scan. Checked against live data |
 | F.12 | Clearer Demo / Live API switch in the sidebar | ✅ Done (PR #18; workshop needs git pull + npm run online) | Selected option is solid white with a filled dot, the other is faded with a hollow dot, plus a "Showing live / demo data" line |
 | F.12b | Selected data-source dot turns green | 🟡 In progress (branch aryan-switch-green-dot) | Solid green dot with a soft ring on the selected option, so it's clear which source is in use |
-| F.13 | Product home page at `/` (startup sales page with shredder hero, "Try it" opens the portal) | 🟡 In progress (branch aryan-home-page) | Logo links to `/`; review queue moves to `/queue`. Pricing number still needed from the team |
-| F.14 | Restyle the portal (queue, upload, dashboard, audit) to match the new home page | 🟡 In progress (branch aryan-home-page, with F.13) | Monochrome ink + silver, Geist, pill buttons; safety-sign colours removed |
+| F.13 | Product home page at `/` (startup sales page with shredder hero, "Try it" opens the portal) | 🔵 In review (PR #22) | Logo links to `/`; review queue moves to `/queue`. Pricing number still needed from the team |
+| F.14 | Restyle the portal (queue, upload, dashboard, audit) to match the new home page | 🔵 In review (PR #22) | Monochrome ink + silver, Geist, pill buttons; safety-sign colours removed |
+| F.15 | Admin panel (`/admin`): team and roles, invites, legal holds, retention rules | 🟡 In progress (branch aryan-admin) | Frontend only, works in Demo mode. Live needs admin API routes (not built; proposed in the PR). Sign-in/sign-up itself is Arihant's (`arihant-login`), not redone here |
 | — | `docs/feature-proposals.md` (P1: scan only new or changed files) | ✅ Merged (PR #17) | Team to set the Decision column; mark ✅ there if built |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
