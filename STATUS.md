@@ -37,7 +37,7 @@ _Last updated: 2026-10-02_
 | D.3 | Restore from quarantine | ✅ Done (Aryan) | See Aryan's section |
 | D.4 | Purge → `PURGED` + audit entry | ✅ Done (Aryan) | See Aryan's section |
 | D.5 | Macie scan / status / ingest → sensitivity score | ✅ Done (needs live run) | `POST /scan` starts a ONE_TIME job (all managed identifiers, so NAME/ADDRESS count); `GET /scan/status` reads the newest `<bucket>-*` job; `POST /scan/ingest` saves `macieFindings`, `sensitivityScore`, `priority`, `scoreSource` via `sensitivity.score_file`, then `records.lock_if_needed` (D.7). Files uploaded after the job started are skipped until the next scan. **Run a scan well before the demo (minutes).** Classifier fallback (B.7) needs `process` to save `piiTypes` |
-| D.6 | `/dashboard` metrics | ⬜ Not started | Planned: Arihant (after D.5) |
+| D.6 | `/dashboard` metrics | 🟡 In progress | Arihant, branch `arihant-dashboard`. Matches `frontend/src/lib/metrics.ts` |
 | D.7 | RETAIN + HIGH sensitivity → `records/` (LOCKED) | ✅ Done (Aryan) | See Aryan's section |
 | — | Merged `anwesh/process` into `main` + fixed `process` wiring | ✅ Done | Handler name, imports, `fileId` from key, URL-decoded keys |
 | — | Re-fixed `process` after merge `b640268` | ✅ Done | That merge restored `from backend.process...` (Lambda import crash → uploads not classified) and `fileId = filename`. `test_process.py` now loads the handler like Lambda does, so this can't regress silently |
