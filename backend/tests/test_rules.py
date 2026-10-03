@@ -1,13 +1,10 @@
-from datetime import datetime, timedelta
-import importlib.util
 import os
+import sys
+from datetime import datetime, timedelta
 
-# Load by path: `backend.` imports are banned (AGENTS.md rule 1) and pytest runs from backend/
-_spec = importlib.util.spec_from_file_location(
-    "shared_rules", os.path.join(os.path.dirname(__file__), "..", "shared", "rules.py"))
-_rules = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_rules)
-evaluate_retention = _rules.evaluate_retention
+# No `backend.` prefix: pytest runs from backend/ (see AGENTS.md, Rule 1)
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "shared"))
+from rules import evaluate_retention  # noqa: E402
 
 def test_legal_hold_override():
     file_meta = {
