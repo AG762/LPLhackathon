@@ -138,11 +138,16 @@ export default function HomePage() {
           <a href="#proof">Proof</a>
           <a href="#pricing">Pricing</a>
         </nav>
-        <Magnetic>
-          <Link className="hp-pill hp-pill-nav" to="/dashboard">
-            Try it now
+        <div className="hp-nav-end">
+          <Link className="hp-signin" to="/signin">
+            Sign in
           </Link>
-        </Magnetic>
+          <Magnetic>
+            <Link className="hp-pill hp-pill-nav" to="/dashboard">
+              Try it now
+            </Link>
+          </Magnetic>
+        </div>
       </header>
 
       <main id="main">

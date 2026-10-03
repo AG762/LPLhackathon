@@ -1424,3 +1424,26 @@ html.lenis body {
 .rise-in {
   display: inline-block;
 }
+
+/* Sign in sits beside the pill; it inherits the nav's blend so it reads on dark and light. */
+.hp-nav-end {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2vw, 24px);
+}
+
+.hp-signin {
+  color: inherit;
+  font-size: 0.92rem;
+  text-decoration: none;
+  opacity: 0.85;
+  transition: opacity 200ms ease;
+}
+
+.hp-signin:hover {
+  color: inherit;
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
