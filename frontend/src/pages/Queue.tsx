@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type Ref } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { api, ApiError } from '../api/client'
@@ -93,10 +93,15 @@ export default function QueuePage() {
   }, [files])
 
   const inTab = useMemo(() => (filter === 'ALL' ? files : files.filter((f) => f.status === filter)), [files, filter])
+  // Typing stays instant with thousands of files: the list catches up a moment later.
+  const deferredQuery = useDeferredValue(query.trim())
   const visible = useMemo(() => {
-    const list = inTab.filter((f) => matchesKind(f, kind) && matchesQuery(f, query.trim()))
+    const list = inTab.filter((f) => matchesKind(f, kind) && matchesQuery(f, deferredQuery))
     return list.some((f) => f.priority) ? sortByPriority(list) : list
-  }, [inTab, kind, query])
+  }, [inTab, kind, deferredQuery])
+  // Changing the tab, search or filter swaps the whole list at once (no exit animation for hundreds of rows);
+  // approving or keeping a file within the same view still animates that row out.
+  const viewKey = `${filter}|${kind}|${deferredQuery}`
   const narrowed = query.trim() !== '' || kind !== 'ANY'
 
   // "/" jumps to search, as in most tools with a list to filter.
@@ -449,7 +454,7 @@ export default function QueuePage() {
         ) : visible.length === 0 ? (
           <EmptyState filter={filter} hasFiles={files.length > 0} />
         ) : (
-          <ul className="rows">
+          <ul className="rows" key={viewKey}>
             <AnimatePresence initial={false} mode="popLayout">
               {visible.map((f) => (
                 <Row
