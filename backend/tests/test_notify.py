@@ -1,5 +1,7 @@
 """D.9: the scheduled job that emails people when their files are scanned and ready for review.
 Macie is the fake from test_scan; SES is moto's, so the messages that would have been sent can be read back."""
+import re
+
 import boto3
 import pytest
 from moto.core import DEFAULT_ACCOUNT_ID
@@ -24,7 +26,7 @@ def s3(aws):
 @pytest.fixture
 def ses(aws, monkeypatch):
     monkeypatch.setenv("NOTIFY_FROM", SENDER)
-    monkeypatch.setenv("APP_URL", "https://app.example/queue")
+    monkeypatch.setenv("APP_URL", "https://app.example/")
     client = boto3.client("ses")
     for address in (SENDER, "alex@example.com", "sam@example.com", "demo@example.com"):
         client.verify_email_identity(EmailAddress=address)
@@ -68,10 +70,10 @@ def test_scores_the_scan_and_emails_each_uploader_their_own_summary(macie, ses, 
     mail = {to: (subject, body) for to, subject, body in sent()}
     subject, body = mail["alex@example.com"]
     assert subject == "Your files are scanned and ready for review (2 files)"
-    assert "1 file is past retention and ready to delete" in body
-    assert "1 file holds a lot of client data" in body
-    assert "1 file needs a person to decide" in body
-    assert "Nothing has been deleted" in body and "https://app.example/queue" in body
+    words = " ".join(re.sub(r"<[^>]+>", " ", body).split())  # moto keeps the HTML part; read it as text
+    assert "1 ready to delete" in words and "1 high exposure" in words
+    assert "1 need a decision" in words and "0 on legal hold" in words
+    assert "Nothing has been deleted" in words and 'href="https://app.example/queue"' in body
     assert "(1 file)" in mail["sam@example.com"][0]  # Sam only hears about Sam's file
 
 

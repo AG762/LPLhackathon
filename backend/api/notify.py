@@ -52,32 +52,54 @@ def _plural(n, one, many):
     return f"{n} {one if n == 1 else many}"
 
 
+def queue_url(app_url):
+    """APP_URL is the site's root (infra: FrontendOrigin + FrontendBasePath); the email links to the queue."""
+    return f"{app_url.rstrip('/')}/queue" if app_url else ""
+
+
 def compose(summary, app_url):
-    """(subject, text, html) for one person's scan summary."""
-    s = summary
+    """(subject, text, html) for one person's scan summary. The HTML uses tables and inline styles, which is
+    what email clients render reliably."""
+    s, link = summary, queue_url(app_url)
     subject = f"Your files are scanned and ready for review ({_plural(s['scanned'], 'file', 'files')})"
-    lines = [
-        f"ShredSafe finished checking {_plural(s['scanned'], 'of your files', 'of your files')} for sensitive client data.",
-        "",
-        f"- {_plural(s['ready'], 'file is', 'files are')} past retention and ready to delete",
-        f"- {_plural(s['high'], 'file holds', 'files hold')} a lot of client data (SSNs, account numbers), so they're at the top of your queue",
-        f"- {_plural(s['review'], 'file needs', 'files need')} a person to decide",
-        f"- {_plural(s['held'], 'file is', 'files are')} under a legal hold and will be kept",
-        "",
-        "Nothing has been deleted. Every deletion waits for your approval.",
+    intro = f"ShredSafe finished checking {_plural(s['scanned'], 'of your files', 'of your files')} for sensitive client data."
+    rows = [
+        (s["ready"], "ready to delete", "past retention, waiting for your approval"),
+        (s["high"], "high exposure", "hold SSNs or account numbers, so they're at the top of your queue"),
+        (s["review"], "need a decision", "not clear-cut, so a person decides"),
+        (s["held"], "on legal hold", "kept, whatever their age"),
     ]
-    if app_url:
-        lines += ["", f"Review them: {app_url}"]
+    lines = [intro, ""] + [f"- {n} {label}: {why}" for n, label, why in rows] + [
+        "", "Nothing has been deleted. Every deletion waits for your approval."]
+    if link:
+        lines += ["", f"Review them: {link}"]
     text = "\n".join(lines)
-    items = "".join(f"<li>{html.escape(line[2:])}</li>" for line in lines if line.startswith("- "))
-    link = (f'<p><a href="{html.escape(app_url)}" style="display:inline-block;padding:12px 22px;border-radius:999px;'
-            f'background:#0a0e14;color:#ffffff;text-decoration:none">Open your review queue</a></p>') if app_url else ""
+
+    cells = "".join(
+        f'<td width="50%" style="padding:14px 16px;border:1px solid #e3e6ea;vertical-align:top">'
+        f'<div style="font-size:28px;font-weight:600;letter-spacing:-0.02em;color:#0a0e14">{n}</div>'
+        f'<div style="font-size:14px;font-weight:600;color:#0a0e14">{html.escape(label)}</div>'
+        f'<div style="font-size:13px;color:#4b5563;line-height:1.4">{html.escape(why)}</div></td>'
+        + ("</tr><tr>" if i == 1 else "")
+        for i, (n, label, why) in enumerate(rows)
+    )
+    button = (
+        f'<tr><td style="padding:8px 0 24px"><a href="{html.escape(link)}" style="display:inline-block;padding:13px 24px;'
+        f'border-radius:999px;background:#0a0e14;color:#ffffff;font-weight:600;text-decoration:none">'
+        f"Open your review queue</a></td></tr>"
+    ) if link else ""
     body = (
-        '<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0a0e14;max-width:520px">'
-        '<p style="font-weight:600;font-size:18px;margin:0 0 12px">ShredSafe</p>'
-        f"<p>{html.escape(lines[0])}</p><ul>{items}</ul>"
-        "<p>Nothing has been deleted. Every deletion waits for your approval.</p>"
-        f"{link}</div>"
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:-apple-system,'
+        'Segoe UI,Helvetica,Arial,sans-serif;color:#0a0e14;max-width:560px">'
+        '<tr><td style="padding:0 0 18px;font-size:17px;font-weight:700;letter-spacing:-0.02em">ShredSafe</td></tr>'
+        f'<tr><td style="padding:0 0 16px;font-size:16px;line-height:1.5">{html.escape(intro)}</td></tr>'
+        '<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        f'style="border-collapse:collapse"><tr>{cells}</tr></table></td></tr>'
+        '<tr><td style="padding:18px 0 10px;font-size:15px;line-height:1.5"><b>Nothing has been deleted.</b> '
+        "Every deletion waits for your approval.</td></tr>"
+        f"{button}"
+        '<tr><td style="padding:22px 0 0;border-top:1px solid #e3e6ea;font-size:12px;color:#6b7280;line-height:1.5">'
+        "You're getting this because you uploaded files to ShredSafe. One email per scan.</td></tr></table>"
     )
     return subject, text, body
 
