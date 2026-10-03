@@ -15,7 +15,7 @@ export interface ShredItem {
   stamp?: string
 }
 
-function toItem(f: FileRecord): ShredItem | null {
+export function toItem(f: FileRecord): ShredItem | null {
   const base = { id: f.fileId, name: fileName(f), kind: docTypeLabel(f.docType), client: f.clientName }
   if (isOnHold(f)) return { ...base, outcome: 'hold', reason: f.holdReason ?? (f.clientName ? `Legal hold on ${f.clientName}` : 'Legal hold on this client') }
   if (f.recommendation === 'DELETE') {
@@ -56,7 +56,7 @@ const SAMPLE_ITEMS: ShredItem[] = [
 
 export const VERDICT: Record<Outcome, string> = {
   shred: 'Cleared to delete',
-  hold: 'Stopped: legal hold',
+  hold: 'Stopped',
   keep: 'Kept',
   review: 'Sent for review',
 }

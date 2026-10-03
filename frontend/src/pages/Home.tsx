@@ -1,300 +1,200 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { animate, motion, useInView, useReducedMotion, useScroll } from 'motion/react'
-import { api, mode } from '../api/client'
+import { useReducedMotion } from 'motion/react'
+import Lenis from 'lenis'
+import '@fontsource-variable/geist'
+import { mode } from '../api/client'
 import { BrandMark } from '../components/BrandMark'
 import Shredder from '../components/Shredder'
-import { pickItems, type ShredItem } from '../lib/shredItems'
-import { isOnHold } from '../lib/format'
+import HeroScroll, { type HeroFile } from '../components/home/HeroScroll'
+import FileRiver, { type RiverFile } from '../components/home/FileRiver'
+import BigList from '../components/home/BigList'
+import ChainDemo from '../components/home/ChainDemo'
+import { pickItems, toItem, type ShredItem } from '../lib/shredItems'
+import { fileName, isOnHold } from '../lib/format'
 import { useFiles } from '../state/files'
 import './home.css'
 
 // Monthly price per advisor, in dollars. Left unset until the team agrees on a number.
 const PRICE_PER_ADVISOR: number | null = null
 
-const EASE = [0.16, 1, 0.3, 1] as const
+const FALLBACK_CLEARED: HeroFile = { name: 'Fantasy_Football_Draft_2023.txt', kind: 'Personal', reason: 'Not a business record.' }
+const FALLBACK_HELD: HeroFile = {
+  name: '2019_Email_Whitaker_Rebalance.eml',
+  kind: 'Client communication',
+  client: 'Margaret Whitaker',
+  reason: 'Legal hold on Margaret Whitaker.',
+}
 
-const STEPS = [
-  {
-    title: 'Upload',
-    text: 'Files go straight from the browser to storage over a one-time signed link. Each one gets a SHA-256 fingerprint on arrival.',
-    aws: 'Amazon S3',
-  },
-  {
-    title: 'Read',
-    text: 'AI reads each file and names what it is: a trade confirmation, a statement, a scanned ID. A second scan finds SSNs and account numbers.',
-    aws: 'Amazon Bedrock, Amazon Macie',
-  },
-  {
-    title: 'Check rules and holds',
-    text: "Your firm's retention rules set a keep-until date for each type. An active legal hold on the client, account, or branch overrides everything.",
-    aws: 'AWS Lambda, DynamoDB',
-  },
-  {
-    title: 'Quarantine',
-    text: 'Approved files are moved, not deleted. They sit in a locked quarantine and can be restored with one click until the grace period ends.',
-    aws: 'S3 Object Lock',
-  },
-  {
-    title: 'Prove it',
-    text: 'Every decision is written to a hash-chained log. Change one entry and the integrity check fails. Export a signed disposal certificate for the exam.',
-    aws: 'DynamoDB, PDF certificate',
-  },
-]
+const FALLBACK_RIVER: RiverFile[] = [
+  'Fantasy_Football_Draft_2023.txt', '2019_Email_Whitaker_Rebalance.eml', 'Trade_Confirm_NVDA_2025_04.txt',
+  'W9_Scan_Chen_2017.png', 'Statement_Okafor_2017_03.txt', 'Newsletter_Spring_2019 (copy).txt',
+  'Q3_Financial_Plan_Proposal_v1_draft.txt', 'Statement_Novak_2026_06.txt', 'Gym_Receipt_2024.txt',
+  'Retirement_Income_Plan_Okafor_FINAL.txt', 'Funny_Cat_Meme.png', 'Email_Delgado_2025_11.eml',
+].map((name, i) => ({ name, state: i % 5 === 1 || i % 5 === 4 ? 'held' : i % 3 === 0 ? 'cleared' : 'kept' }) as RiverFile)
+
+function useSmoothScroll(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return
+    const lenis = new Lenis({ autoRaf: true, anchors: true, lerp: 0.09 })
+    return () => lenis.destroy()
+  }, [enabled])
+}
 
 export default function HomePage() {
   const { files, loaded, error } = useFiles()
-  // Snapshot once, so the animation doesn't reshuffle every time /files is polled.
-  const [items, setItems] = useState<ShredItem[] | null>(null)
-  if (loaded && !items) setItems(pickItems(error ? [] : files))
+  const reduce = useReducedMotion()
+  useSmoothScroll(!reduce)
 
   useEffect(() => {
     document.title = 'ShredSafe: defensible disposal for advisors'
+    document.documentElement.classList.add('hp-root')
     return () => {
       document.title = 'ShredSafe'
+      document.documentElement.classList.remove('hp-root')
     }
   }, [])
 
+  // Snapshot once, so the animations don't reshuffle every time /files is polled.
+  const [items, setItems] = useState<ShredItem[] | null>(null)
+  if (loaded && !items) setItems(pickItems(error ? [] : files))
+
+  const usable = loaded && !error && files.length > 0
+
+  // Chosen once, when data first arrives; later polls shouldn't swap the files mid-scroll.
+  const [hero, setHero] = useState<{ cleared: HeroFile; held: HeroFile } | null>(null)
+  if (loaded && !hero) {
+    const decided = usable ? files.map(toItem).filter((i): i is ShredItem => Boolean(i)) : []
+    const c = decided.find((i) => i.outcome === 'shred' && i.kind === 'Personal') ?? decided.find((i) => i.outcome === 'shred')
+    const h = decided.find((i) => i.outcome === 'hold')
+    setHero({
+      cleared: c ? { name: c.name, kind: c.kind, client: c.client, reason: `${c.reason}.` } : FALLBACK_CLEARED,
+      held: h ? { name: h.name, kind: h.kind, client: h.client, reason: `${h.reason}.` } : FALLBACK_HELD,
+    })
+  }
+
+  const river = useMemo<RiverFile[]>(() => {
+    if (!usable) return FALLBACK_RIVER
+    return files.map((f) => ({
+      name: fileName(f),
+      state: isOnHold(f) ? 'held' : f.recommendation === 'DELETE' ? 'cleared' : 'kept',
+    }))
+  }, [files, usable])
+
+  const counts = useMemo(() => {
+    if (!usable) return { read: 42, cleared: 21, held: 6 }
+    return {
+      read: files.filter((f) => f.recommendation).length,
+      cleared: files.filter((f) => f.recommendation === 'DELETE' && !isOnHold(f)).length,
+      held: files.filter(isOnHold).length,
+    }
+  }, [files, usable])
+
+  const source = usable ? (mode === 'live' ? 'the live AWS stack' : 'the built-in demo data') : 'the sample dataset'
+
   return (
-    <div className="home">
-      <header className="home-top">
-        <Link className="home-brand" to="/">
+    <div className="hp">
+      <header className="hp-nav">
+        <Link className="hp-brand" to="/">
           <BrandMark />
           ShredSafe
         </Link>
-        <nav className="home-links" aria-label="Page">
+        <nav className="hp-links" aria-label="Page">
           <a href="#how">How it works</a>
+          <a href="#proof">Proof</a>
           <a href="#pricing">Pricing</a>
-          <Link className="home-btn home-btn-light home-btn-small" to="/dashboard">
-            Open the portal
-          </Link>
         </nav>
+        <Link className="hp-pill" to="/dashboard">
+          Try it now
+        </Link>
       </header>
 
-      <section className="home-hero">
-        <div className="home-hero-copy">
-          <h1>Delete client files on schedule. Prove every one.</h1>
-          <p className="home-lede">
-            ShredSafe checks every file on a branch drive against your firm's retention rules and legal holds. It clears
-            only what the rules allow, stops anything under a hold, and records each step in a log an examiner can verify.
-          </p>
-          <div className="home-ctas">
-            <Link className="home-btn home-btn-light" to="/dashboard">
-              Try it now
-            </Link>
-            <a className="home-btn home-btn-ghost" href="#how">
-              See how it works
-            </a>
-          </div>
-        </div>
-        <div className="home-hero-machine">
-          {items ? <Shredder items={items} /> : <div className="ss-placeholder" aria-hidden="true" />}
+      <HeroScroll cleared={(hero ?? { cleared: FALLBACK_CLEARED }).cleared} held={(hero ?? { held: FALLBACK_HELD }).held} />
+
+      <FileRiver files={river} counts={counts} source={source} />
+
+      <section className="hp-stakes" aria-labelledby="stakes-title">
+        <h2 id="stakes-title" className="hp-h2">
+          Two ways to get records wrong.
+        </h2>
+        <div className="hp-stakes-grid">
+          <article>
+            <p className="hp-stakes-label">Delete too early</p>
+            <p>
+              Trade confirmations, statements and client letters must be kept for three to six years. A file tied to a
+              legal hold can't be destroyed at all, however old it is.
+            </p>
+            <p className="hp-cite">SEC Rule 17a-4 and FINRA Rule 4511</p>
+          </article>
+          <article>
+            <p className="hp-stakes-label">Keep too long</p>
+            <p>
+              Amended Reg S-P requires written procedures for disposing of customer information. Every expired SSN scan
+              on a branch drive is one more record to report if that drive is ever breached.
+            </p>
+            <p className="hp-cite">Regulation S-P, as amended in 2024</p>
+          </article>
         </div>
       </section>
 
-      <section className="home-problem" aria-labelledby="problem-title">
-        <h2 id="problem-title">There are two ways to get records wrong</h2>
-        <div className="home-problem-grid">
-          <article>
-            <h3>Delete too early</h3>
-            <p>
-              Trade confirmations, statements, and client correspondence must be kept for three to six years. A file
-              tied to a legal hold can't be destroyed at all, however old it is. Getting this wrong is what examiners
-              fine.
-            </p>
-            <p className="home-cite">SEC Rule 17a-4, FINRA Rule 4511</p>
-          </article>
-          <article>
-            <h3>Keep too long</h3>
-            <p>
-              Amended Reg S-P requires written procedures for disposing of customer information and notice to
-              customers after a breach. Every expired SSN scan left on a branch drive is one more record to report if
-              that drive is ever exposed.
-            </p>
-            <p className="home-cite">Regulation S-P, as amended 2024</p>
-          </article>
-        </div>
-        <p className="home-problem-close">
-          Most branches keep everything because deleting feels like the riskier choice. ShredSafe makes deleting the
-          documented, defensible choice.
-        </p>
-      </section>
+      <BigList />
 
-      <HowItWorks />
+      <div id="proof">
+        <ChainDemo />
+      </div>
 
-      <Proof />
-
-      <section className="home-price" id="pricing" aria-labelledby="price-title">
-        <div>
-          <h2 id="price-title">One price per advisor</h2>
-          <p className="home-price-figure">
-            {PRICE_PER_ADVISOR != null ? (
-              <>
-                <span className="num">${PRICE_PER_ADVISOR}</span> per advisor, per month
-              </>
-            ) : (
-              'Pilot pricing on request'
-            )}
+      <section className="hp-live" aria-labelledby="live-title">
+        <div className="hp-live-copy">
+          <h2 id="live-title" className="hp-h2">
+            Watch it sort your files.
+          </h2>
+          <p>
+            These are the files in {source}, going through the same rules the portal uses. Nothing here deletes
+            anything; in the portal, an advisor approves every deletion.
           </p>
-          <ul className="home-price-list">
-            <li>Retention rules for every common advisor document type</li>
-            <li>Legal holds by client, account, branch, or keyword</li>
-            <li>Quarantine with one-click restore during the grace period</li>
-            <li>Hash-chained audit log and PDF disposal certificate</li>
-            <li>Deploys into your own AWS account</li>
-          </ul>
-        </div>
-        <div className="home-price-cta">
-          <p>Start with one branch. Upload a folder, see what ShredSafe would clear, and approve nothing until you're sure.</p>
-          <Link className="home-btn home-btn-dark" to="/dashboard">
-            Try it now
+          <Link className="hp-btn hp-btn-light" to="/queue">
+            Open the review queue
           </Link>
         </div>
+        <div className="hp-live-machine">{items && <Shredder items={items} />}</div>
       </section>
 
-      <footer className="home-foot">
-        <span className="home-foot-brand">
+      <section className="hp-close" id="pricing" aria-labelledby="close-title">
+        <h2 id="close-title" className="hp-close-title">
+          Let go of client files.
+          <br />
+          Keep the proof.
+        </h2>
+        <div className="hp-close-grid">
+          <div>
+            <p className="hp-price">
+              {PRICE_PER_ADVISOR != null ? `$${PRICE_PER_ADVISOR} per advisor, per month` : 'Pilot pricing on request'}
+            </p>
+            <p className="hp-close-note">
+              Start with one branch. See what ShredSafe would clear, and approve nothing until you're sure.
+            </p>
+            <Link className="hp-pill hp-pill-big" to="/dashboard">
+              Try it now
+            </Link>
+          </div>
+          <ul className="hp-included">
+            <li>Retention rules for every common advisor document</li>
+            <li>Legal holds by client, account, branch or keyword</li>
+            <li>Quarantine with one-click restore</li>
+            <li>Hash-chained audit log and PDF certificate</li>
+            <li>Runs in your own AWS account</li>
+          </ul>
+        </div>
+      </section>
+
+      <footer className="hp-foot">
+        <span className="hp-brand">
           <BrandMark />
           ShredSafe
         </span>
-        <p>Built for the LPL Financial University Hackathon. The demo uses synthetic files only; no real client data.</p>
+        <p>Built on Amazon S3, Bedrock, Macie, Lambda and DynamoDB.</p>
+        <p>LPL Financial University Hackathon. Synthetic data only.</p>
       </footer>
     </div>
-  )
-}
-
-function HowItWorks() {
-  const listRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({ target: listRef, offset: ['start 75%', 'end 60%'] })
-
-  return (
-    <section className="home-how" id="how" aria-labelledby="how-title">
-      <h2 id="how-title">From upload to certificate</h2>
-      <p className="home-how-sub">The same five steps run for every file, whether it's one PDF or a whole branch drive.</p>
-      <div className="home-steps-wrap" ref={listRef}>
-        <span className="home-steps-rail" aria-hidden="true" />
-        <motion.span className="home-steps-fill" style={{ scaleY: scrollYProgress }} aria-hidden="true" />
-        <ol className="home-steps">
-        {STEPS.map((s, i) => (
-          <li key={s.title}>
-            <span className="home-step-num num" aria-hidden="true">
-              {i + 1}
-            </span>
-            <div>
-              <h3>{s.title}</h3>
-              <p>{s.text}</p>
-              <p className="home-step-aws">{s.aws}</p>
-            </div>
-          </li>
-        ))}
-        </ol>
-      </div>
-    </section>
-  )
-}
-
-function Proof() {
-  const { files, loaded, error } = useFiles()
-  const [chain, setChain] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    let alive = true
-    api
-      .verifyAudit()
-      .then((r) => alive && setChain(r.ok))
-      .catch(() => alive && setChain(null))
-    return () => {
-      alive = false
-    }
-  }, [])
-
-  const stats = useMemo(() => {
-    const decided = files.filter((f) => f.recommendation)
-    return {
-      checked: decided.length,
-      cleared: decided.filter((f) => f.recommendation === 'DELETE' && !isOnHold(f)).length,
-      held: files.filter(isOnHold).length,
-      kept: decided.filter((f) => f.recommendation === 'RETAIN' && !isOnHold(f)).length,
-    }
-  }, [files])
-
-  const source = mode === 'live' ? 'the live AWS stack' : 'the built-in demo data'
-  const empty = loaded && (error || files.length === 0)
-
-  return (
-    <section className="home-proof" aria-labelledby="proof-title">
-      <h2 id="proof-title">What it found in this demo</h2>
-      <p className="home-proof-sub">
-        {empty
-          ? `No files from ${source} yet. Open the portal and upload a folder to fill this in.`
-          : `Counted from ${source}, updated every few seconds.`}
-      </p>
-      {!empty && (
-        <dl className="home-ledger">
-          <div>
-            <dt>Files checked</dt>
-            <dd>
-              <CountUp value={stats.checked} />
-            </dd>
-          </div>
-          <div>
-            <dt>Cleared to delete</dt>
-            <dd>
-              <CountUp value={stats.cleared} />
-            </dd>
-          </div>
-          <div className="home-ledger-hold">
-            <dt>Stopped by a legal hold</dt>
-            <dd>
-              <CountUp value={stats.held} />
-            </dd>
-          </div>
-          <div>
-            <dt>Kept as required records</dt>
-            <dd>
-              <CountUp value={stats.kept} />
-            </dd>
-          </div>
-          <div>
-            <dt>Audit log integrity</dt>
-            <dd className={chain === false ? 'home-ledger-bad' : ''}>
-              {chain == null ? 'Not checked' : chain ? 'Verified' : 'Failed'}
-            </dd>
-          </div>
-        </dl>
-      )}
-    </section>
-  )
-}
-
-// Counts up from zero the first time it scrolls into view. The real number shows before and after.
-function CountUp({ value }: { value: number }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true, amount: 0.6 })
-  const reduce = useReducedMotion()
-  const played = useRef(false)
-  const [shown, setShown] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (!inView || played.current || reduce || value === 0) return
-    const controls = animate(0, value, {
-      duration: 1.1,
-      ease: EASE,
-      onUpdate: (v) => setShown(Math.round(v)),
-      onComplete: () => {
-        played.current = true
-        setShown(null)
-      },
-    })
-    return () => {
-      controls.stop()
-      setShown(null)
-    }
-  }, [inView, reduce, value])
-
-  return (
-    <span ref={ref} className="num">
-      {(shown ?? value).toLocaleString()}
-    </span>
   )
 }
