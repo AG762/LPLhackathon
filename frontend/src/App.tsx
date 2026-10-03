@@ -49,6 +49,12 @@ function Sidebar() {
       <div className="sidebar-foot">
         {signInEnabled ? (
           <SignedInUser />
+        ) : mode === 'live' ? (
+          // Live data but no sign-in settings on this site: say so, instead of showing the sample advisor
+          <div className="advisor">
+            <div className="advisor-name">Not signed in</div>
+            <div className="muted">Sign-in isn't switched on for this site yet</div>
+          </div>
         ) : (
           <Link className="advisor advisor-link" to="/account" title="Your account">
             <div className="advisor-name">{DEMO_ADVISOR.name}</div>

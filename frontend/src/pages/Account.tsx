@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AccountError, PASSWORD_RULES, accountApi } from '../auth/accountApi'
+import { mode } from '../api/client'
 import { signInEnabled } from '../auth/config'
 import { useOptionalSession } from '../auth/session'
 import { DEMO_ADVISOR } from '../lib/format'
@@ -87,6 +88,20 @@ export default function AccountPage() {
     } finally {
       setLeaving(false)
     }
+  }
+
+  if (mode === 'live' && !signInEnabled) {
+    return (
+      <header className="page-head">
+        <div>
+          <h1>Your account</h1>
+          <p>
+            Sign-in isn't switched on for this site yet, so there's no account to show. Ask your administrator to turn
+            it on, or switch the workspace data to Sample to explore this page.
+          </p>
+        </div>
+      </header>
+    )
   }
 
   return (
