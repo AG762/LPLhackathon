@@ -6,6 +6,7 @@
 // Throw AccountError with a message a person can act on; the screens show it as is.
 import {
   confirmResetPassword,
+  confirmSignIn,
   confirmSignUp,
   resendSignUpCode,
   fetchAuthSession,
@@ -30,6 +31,11 @@ export class NeedsConfirmation extends AccountError {
     this.email = email
   }
 }
+
+// An invited account (Admin → People, or scripts/create_user.py without --password) signs in the first time with
+// the temporary password Cognito emailed; Cognito then requires a new one. The screen asks for it and calls
+// accountApi.completeNewPassword.
+export class NeedsNewPassword extends AccountError {}
 
 // True while the calls only pretend; the screens then show their "Preview" note.
 export const ACCOUNTS_ARE_PREVIEW = !signInEnabled
@@ -100,6 +106,19 @@ async function cognito<T>(call: () => Promise<T>): Promise<T> {
 // can sign the new advisor straight in.
 let pendingSignUp: { email: string; password: string } | null = null
 
+// With sign-up switched off (AllowSignUp=false: invite-only), Cognito answers NotAuthorizedException, which
+// friendly() would show as a wrong password.
+async function inviteOnlyAware<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call()
+  } catch (e) {
+    if ((e as { name?: string }).name === 'NotAuthorizedException') {
+      throw new AccountError('ShredSafe is invite-only here. Ask your firm’s admin to invite you from Admin → People.')
+    }
+    throw friendly(e)
+  }
+}
+
 async function liveSignIn(email: string, password: string) {
   const result = await cognito(() => signIn({ username: email, password }))
   switch (result.nextStep.signInStep) {
@@ -113,7 +132,7 @@ async function liveSignIn(email: string, password: string) {
     case 'RESET_PASSWORD':
       throw new AccountError('You need to choose a new password. Use “Forgot your password?” below.')
     case 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED':
-      throw new AccountError('This account still has its temporary password. Ask whoever set it up to reset it.')
+      throw new NeedsNewPassword('Welcome to ShredSafe. Choose your own password to finish setting up your account.')
     default:
       throw new AccountError('This account needs a sign-in step this page doesn’t support yet (such as an authenticator code).')
   }
@@ -135,7 +154,7 @@ export const accountApi = {
     checkPassword(input.password)
     if (!signInEnabled) return pause()
     const email = input.email.trim()
-    await cognito(() =>
+    await inviteOnlyAware(() =>
       signUp({
         username: email,
         password: input.password,
@@ -159,6 +178,17 @@ export const accountApi = {
     if (!pending) return false
     await liveSignIn(username, pending.password)
     return true
+  },
+
+  // Second half of an invited account's first sign-in (after NeedsNewPassword)
+  async completeNewPassword(newPassword: string) {
+    checkPassword(newPassword)
+    if (!signInEnabled) return pause()
+    const result = await cognito(() => confirmSignIn({ challengeResponse: newPassword }))
+    if (result.nextStep.signInStep !== 'DONE') {
+      throw new AccountError('Your password is saved, but this account needs another sign-in step this page doesn’t support yet.')
+    }
+    await refreshSession()
   },
 
   async resendCode(email: string) {
