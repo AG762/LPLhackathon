@@ -493,9 +493,11 @@ const adminApi: Pick<
     if (!h.active) throw new ApiError(409, 'This hold was already released.')
     if (!reason.trim()) throw new ApiError(400, 'Give a reason for releasing the hold.')
     Object.assign(h, { active: false, releasedBy: DEMO_ADVISOR.name, releasedAt: new Date().toISOString(), releaseReason: reason.trim() })
+    const parked = [...files.values()].filter((f) => f.ruleApplied === 'LEGAL_HOLD_OVERRIDE' && f.status === 'PENDING')
     applyHolds()
+    const reopenedFiles = parked.filter((f) => f.ruleApplied === 'HOLD_RELEASED').length
     await appendAudit({ actor: DEMO_ADVISOR.id, action: 'HOLD_RELEASED', ruleApplied: `${h.holdId}: ${h.scopeType} ${h.scopeValue}` })
-    return withCounts(h)
+    return { ...withCounts(h), reopenedFiles }
   },
 
   async listRules() {

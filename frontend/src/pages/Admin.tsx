@@ -52,6 +52,7 @@ function wouldMatch(scope: HoldScope, value: string, f: FileRecord) {
 // the same roles, so this is about not showing controls that would fail.
 export default function AdminPage() {
   const auth = useOptionalSession()
+  const selfEmail = auth?.session.status === 'signedIn' ? auth.session.email : undefined
   if (signInEnabled && (!auth || auth.session.status === 'loading')) {
     return (
       <p className="muted" role="status">
@@ -82,10 +83,10 @@ export default function AdminPage() {
       </>
     )
   }
-  return <AdminTabs canManagePeople={canManagePeople} />
+  return <AdminTabs canManagePeople={canManagePeople} selfEmail={selfEmail} />
 }
 
-function AdminTabs({ canManagePeople }: { canManagePeople: boolean }) {
+function AdminTabs({ canManagePeople, selfEmail }: { canManagePeople: boolean; selfEmail?: string }) {
   const [tab, setTab] = useState<Tab>(canManagePeople ? 'team' : 'holds')
   const [counts, setCounts] = useState<Record<Tab, number | undefined>>({ team: undefined, holds: undefined, rules: undefined })
   const setCount = useCallback((t: Tab, n: number) => setCounts((c) => (c[t] === n ? c : { ...c, [t]: n })), [])
@@ -126,7 +127,7 @@ function AdminTabs({ canManagePeople }: { canManagePeople: boolean }) {
       </div>
 
       <section className="admin-panel" role="tabpanel" id={`admin-panel-${tab}`} aria-labelledby={`admin-tab-${tab}`}>
-        {tab === 'team' && <People onCount={(n) => setCount('team', n)} />}
+        {tab === 'team' && <People onCount={(n) => setCount('team', n)} selfEmail={selfEmail} />}
         {tab === 'holds' && <Holds onCount={(n) => setCount('holds', n)} />}
         {tab === 'rules' && <Rules onCount={(n) => setCount('rules', n)} />}
       </section>
@@ -153,7 +154,7 @@ function Unavailable({ message, retry }: { message: string; retry: () => void })
 
 // ---------- People ----------
 
-function People({ onCount }: { onCount: (n: number) => void }) {
+function People({ onCount, selfEmail }: { onCount: (n: number) => void; selfEmail?: string }) {
   const toast = useToast()
   const [members, setMembers] = useState<Member[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -278,7 +279,8 @@ function People({ onCount }: { onCount: (n: number) => void }) {
             <tbody>
               <AnimatePresence initial={false}>
                 {members.map((m) => {
-                  const self = m.userId === DEMO_ADVISOR.id
+                  // Signed in: match on email (Cognito user ids are opaque). Sample workspace: the demo advisor.
+                  const self = selfEmail ? m.email.toLowerCase() === selfEmail.toLowerCase() : m.userId === DEMO_ADVISOR.id
                   return (
                     <motion.tr
                       key={m.userId}
@@ -406,8 +408,14 @@ function Holds({ onCount }: { onCount: (n: number) => void }) {
   async function release(h: LegalHold) {
     setBusy(h.holdId)
     try {
-      await api.releaseHold(h.holdId, releaseReason)
-      toast(`Hold ${h.holdId} released. Its files go back through the retention rules.`, 'ok')
+      const released = await api.releaseHold(h.holdId, releaseReason)
+      const reopened = released.reopenedFiles ?? 0
+      toast(
+        reopened
+          ? `Hold ${h.holdId} released. ${reopened} ${reopened === 1 ? 'file goes' : 'files go'} back for review.`
+          : `Hold ${h.holdId} released.`,
+        'ok',
+      )
       setReleasing(null)
       setReleaseReason('')
       await Promise.all([load(), refresh()])

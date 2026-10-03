@@ -1,4 +1,4 @@
 pytest
-moto[s3,dynamodb]
+moto[s3,dynamodb,cognitoidp]
 boto3
 PyJWT[crypto]>=2.8

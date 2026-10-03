@@ -7,6 +7,7 @@ from botocore.config import Config
 _s3 = None
 _dynamodb = None
 _macie = None
+_cognito = None
 
 
 def s3():
@@ -25,6 +26,21 @@ def macie():
     return _macie
 
 
+def cognito():
+    global _cognito
+    if _cognito is None:
+        _cognito = boto3.client("cognito-idp")
+    return _cognito
+
+
+def user_pool_id():
+    pool = os.environ.get("USER_POOL_ID")
+    if not pool:
+        from http_utils import HttpError  # local import: aws.py has no other app dependencies
+        raise HttpError(409, "Sign-in isn't set up on this stack, so there are no people to manage")
+    return pool
+
+
 def table(env_var):
     global _dynamodb
     if _dynamodb is None:
@@ -38,7 +54,8 @@ def bucket():
 
 def reset():
     """Drop cached clients (tests)."""
-    global _s3, _dynamodb, _macie
+    global _s3, _dynamodb, _macie, _cognito
     _s3 = None
     _dynamodb = None
     _macie = None
+    _cognito = None

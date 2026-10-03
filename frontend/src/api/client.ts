@@ -94,12 +94,13 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { authorization: `Bearer ${token}` } : {}
 }
 
-// Admin routes aren't on the backend yet; a 404 there means "not built", not "no such user".
+// On a stack deployed before the admin routes (D.8), the router answers "No route for …": report that as
+// not built. Any other 404 ("No such hold") is a real answer and passes through.
 async function adminRequest<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   try {
     return await request<T>(method, path, body)
   } catch (e) {
-    if (e instanceof ApiError && (e.status === 404 || e.status === 501)) {
+    if (e instanceof ApiError && (e.status === 501 || (e.status === 404 && e.message.startsWith('No route for')))) {
       throw new ApiError(501, `Not built on the backend yet (${method} ${path})`)
     }
     throw e

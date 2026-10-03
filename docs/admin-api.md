@@ -1,8 +1,14 @@
 # Admin API (proposed, for the `/admin` screen)
 
-Status: **proposal, not built.** The admin screen (F.15, `frontend/src/pages/Admin.tsx`) works fully in Demo mode
-against the in-browser backend (`frontend/src/api/mock.ts`). On the live stack it calls the routes below. Until they
-exist, each tab says "Not connected to the live stack yet" instead of failing.
+Status: **built (D.8, `backend/api/routes/admin.py`, tests in `backend/tests/test_admin.py`); live after the next
+deploy.** The admin screen (F.15, `frontend/src/pages/Admin.tsx`) calls these routes on the live stack and the
+in-browser backend (`frontend/src/api/mock.ts`) in Sample mode. On a stack deployed before D.8 each tab says it
+isn't switched on yet instead of failing.
+
+Everything is scoped to the caller's **workspace** (docs/login.md): holds carry `workspaceId` and only cover that
+workspace's files; admins only see and change people whose `custom:workspace` matches theirs (others are 404).
+Without sign-in (AuthRequired off) holds and rules work as before with no workspace; People needs a signed-in admin.
+Changing a role removes the person's other workspace roles, so nobody keeps an old, higher one.
 
 All routes need sign-in ([login.md](login.md)). Every change appends an audit entry, so the hash chain covers who
 changed access and holds, not just who deleted files.
