@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'motion/react'
+import { Rise } from './Motion'
 
 // What happens to every file, as one big list. Each line lights up as it reaches the middle of the screen.
 
@@ -15,8 +16,8 @@ const LINES = [
 export default function BigList() {
   return (
     <section className="bl" id="how" aria-labelledby="how-title">
-      <h2 id="how-title" className="bl-kicker">
-        What happens to every file
+      <h2 id="how-title" className="hp-h2">
+        <Rise lines={['What happens to', 'every file.']} />
       </h2>
       <ol className="bl-list">
         {LINES.map((l, i) => (

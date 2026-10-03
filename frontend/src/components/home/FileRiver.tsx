@@ -47,15 +47,19 @@ export default function FileRiver({ files, counts, source }: Props) {
 
       <div className="hr-center">
         <h2 id="river-title" className="hr-title">
-          <span className="num">{counts.read}</span> files read.
-          <br />
-          <span className="num">{counts.cleared}</span> can go today.
-          <br />
-          <span className="num">{counts.held}</span> never will.
+          <span className="hr-line">
+            <span className="num">{counts.read}</span> files read.
+          </span>
+          <span className="hr-line">
+            <span className="num">{counts.cleared}</span> can go today.
+          </span>
+          <span className="hr-line">
+            <span className="num">{counts.held}</span> never will.
+          </span>
         </h2>
         <p className="hr-note">
           Counted from {source}. <span className="hr-key hr-key-cleared">Struck through</span> means cleared to delete;{' '}
-          <span className="hr-key hr-key-held">marked</span> means a legal hold stopped it.
+          <span className="hr-key hr-key-held">lit</span> means a legal hold stopped it.
         </p>
       </div>
     </section>

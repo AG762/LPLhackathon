@@ -58,6 +58,8 @@ export default function ChainDemo() {
           const score = new Set(run.map((e) => e.action)).size
           if (score > bestScore) [best, bestScore] = [run, score]
         }
+        // A run of one repeated action doesn't show what the chain records; keep the samples then.
+        if (bestScore < 3) return
         setBlocks(best.map(toBlock))
         setReal(true)
       })
@@ -75,7 +77,7 @@ export default function ChainDemo() {
   return (
     <section className="cd" aria-labelledby="chain-title">
       <div className="cd-head">
-        <h2 id="chain-title">
+        <h2 id="chain-title" className="hp-h2">
           <Rise lines={['Try to rewrite history.']} />
         </h2>
         <p>
