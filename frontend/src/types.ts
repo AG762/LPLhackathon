@@ -65,6 +65,7 @@ export type ScanState = 'IDLE' | 'RUNNING' | 'COMPLETE' | 'FAILED'
 export interface ScanStatus {
   jobId: string | null
   state: ScanState
+  startedAt?: string // when the newest job started; files uploaded after it weren't scanned
 }
 
 export interface DashboardMetrics {

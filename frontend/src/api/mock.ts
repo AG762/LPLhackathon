@@ -406,7 +406,11 @@ export const mockApi: Api = {
   async scanStatus() {
     await latency()
     if (!scan) return { jobId: null, state: 'IDLE' }
-    return { jobId: scan.jobId, state: Date.now() - scan.startedAt >= SCAN_DURATION_MS ? 'COMPLETE' : 'RUNNING' }
+    return {
+      jobId: scan.jobId,
+      state: Date.now() - scan.startedAt >= SCAN_DURATION_MS ? 'COMPLETE' : 'RUNNING',
+      startedAt: new Date(scan.startedAt).toISOString(),
+    }
   },
 
   async ingestScan() {

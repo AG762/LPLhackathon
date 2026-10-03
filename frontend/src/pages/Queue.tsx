@@ -39,7 +39,8 @@ export default function QueuePage() {
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [scanState, setScanState] = useState<ScanState>('IDLE')
   // A scan that finished while nobody was watching (Macie jobs take minutes, so the demo pre-runs one).
-  const [finishedScanWaiting, setFinishedScanWaiting] = useState(false)
+  // Holds the job's start time: only files uploaded before it were scanned.
+  const [finishedScanStartedAt, setFinishedScanStartedAt] = useState<string | null>(null)
   // After a scan re-sorts the queue, each row that moved up (got riskier) keeps a marker until the advisor has looked at it.
   const [moved, setMoved] = useState<Map<string, number>>(new Map())
   const orderBeforeScan = useRef<Map<string, number> | null>(null)
@@ -75,6 +76,14 @@ export default function QueuePage() {
   const reviewCount = pending.filter((f) => f.recommendation === 'REVIEW').length
   const highCount = pending.filter((f) => canApprove(f) && f.priority === 'HIGH').length
   const scanned = files.some((f) => f.priority)
+  // Offer the finished scan only if it started after the newest upload; an older scan never saw these
+  // files (the backend skips them on ingest), so applying it would score nothing.
+  const newestUpload = files.reduce((max, f) => (f.uploadedAt > max ? f.uploadedAt : max), '')
+  const scanReady =
+    !scanned &&
+    files.length > 0 &&
+    finishedScanStartedAt != null &&
+    Date.parse(finishedScanStartedAt) >= Date.parse(newestUpload)
 
   // Drop selections that are no longer approvable (approved elsewhere, filtered out, re-classified).
   useEffect(() => {
@@ -103,7 +112,7 @@ export default function QueuePage() {
       .scanStatus()
       .then((s) => {
         setScanState(s.state === 'RUNNING' ? 'RUNNING' : 'IDLE')
-        setFinishedScanWaiting(s.state === 'COMPLETE')
+        setFinishedScanStartedAt(s.state === 'COMPLETE' ? (s.startedAt ?? null) : null)
       })
       .catch(() => {})
     return () => {
@@ -143,13 +152,13 @@ export default function QueuePage() {
     const { updated } = await api.ingestScan()
     await refresh()
     setScanState('COMPLETE')
-    setFinishedScanWaiting(false)
+    setFinishedScanStartedAt(null)
     toast(`Scan finished. ${updated} files scored, riskiest first.`)
   }
 
   async function startScan() {
     try {
-      if (finishedScanWaiting && !scanned) {
+      if (scanReady) {
         await applyScan() // a finished job is waiting: no need to start another one
         return
       }
@@ -241,7 +250,7 @@ export default function QueuePage() {
             Nothing is gone for good until the grace period ends.
           </p>
         </div>
-        <ScanControl state={scanState} scanned={scanned} ready={finishedScanWaiting && !scanned} onStart={startScan} />
+        <ScanControl state={scanState} scanned={scanned} ready={scanReady} onStart={startScan} />
       </header>
 
       {error && (
