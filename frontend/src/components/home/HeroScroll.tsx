@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from 'motion/react'
 import type { Stage } from './stage'
+import { TryLink } from '../TryLink'
 
 // The opening and the hero are one pinned stage (stage.ts). On a first visit the slot's light ignites in
 // the dark and the camera pulls back while the headline rises; scrolling, a key or a click skips ahead.
@@ -260,9 +260,9 @@ export default function HeroScroll({ cleared, held, intro, still, onIntroDone }:
 function Ctas() {
   return (
     <div className="hs-ctas">
-      <Link className="hp-pill" to="/dashboard">
+      <TryLink className="hp-pill">
         Try it now
-      </Link>
+      </TryLink>
       <a className="hp-btn hp-btn-line" href="#how">
         How it works
       </a>

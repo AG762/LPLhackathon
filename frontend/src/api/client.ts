@@ -73,6 +73,16 @@ export function setMode(mode: ApiMode) {
   window.location.reload()
 }
 
+// The "Try it now" demo: switch to Sample data and open `href` (a full load, since the mode is read at startup)
+export function openWithSampleData(href: string) {
+  try {
+    localStorage.setItem(MODE_KEY, 'mock')
+  } catch {
+    /* storage unavailable */
+  }
+  window.location.assign(href)
+}
+
 // Sign-in (docs/login.md): SessionProvider (auth/session.tsx) registers how to get the ID token and what to do on a 401.
 // Without sign-in configured both stay no-ops and requests go out without a token, as before.
 type TokenGetter = () => Promise<string | undefined> | string | undefined
