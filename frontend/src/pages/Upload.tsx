@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api/client'
+import { api, mode } from '../api/client'
 import { formatBytes } from '../lib/format'
 import { scanEta } from '../lib/scanEstimate'
 import { useFiles } from '../state/files'
@@ -306,8 +306,11 @@ function ScanNoteLine({ note, fileCount }: { note: ScanNote; fileCount: number }
   if (note.kind === 'busy') {
     return (
       <p className="upload-scan" role="status">
-        A sensitive-data scan was already running, so it may not include these files. When it finishes, start another
-        from the review queue.
+        A sensitive-data scan was already running, so it may not include these files.{' '}
+        {mode === 'live'
+          ? // The server's auto-scan (backend/api/autoscan.py) picks up files the running scan missed
+            'ShredSafe scans them automatically a few minutes after it finishes. You can leave this page.'
+          : 'When it finishes, start another from the review queue.'}
       </p>
     )
   }
