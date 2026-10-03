@@ -72,7 +72,8 @@ Change these only with the owners' agreement (see STATUS.md), and update every s
   `recommendation` (`DELETE|RETAIN|REVIEW`), `keepUntil` (`YYYY-MM-DD`), `ruleApplied`, `rationale`, `docType`,
   `sha256`, `sizeBytes`, `uploadedAt`, and when known `clientName` / `clientId` / `accountId` / `branchId`.
   **Omit** unknown fields; don't write `"N/A"` (the UI shows it literally).
-- **`LegalHolds` item:** `{holdId, scopeType, scopeValue, reason, active}`, `scopeType` one of
+- **Workspaces:** files carry `workspaceId` (and `ownerAdvisorId`); signed-in users see only their workspace's files (`routes/files.visible_to`). Any new route that returns or changes files, holds or audit data must filter through it. See docs/login.md.
+- **`LegalHolds` item:** `{holdId, scopeType, scopeValue, reason, active, workspaceId?}` (a hold only covers its own workspace's files), `scopeType` one of
   `CLIENT_NAME` (case-insensitive substring of `clientName`; use the full name), `CLIENT_ID`, `ACCOUNT_ID`, `BRANCH_ID`, `KEYWORD`.
   Matching lives in `backend/api/holds.py`. The approve guard and `GET /files` (`legalHold`, `holdId`, `holdReason`) both use it.
 - **Approve guard:** the API refuses (409) files that are held, `RETAIN`, within `keepUntil`, or not `PENDING`.

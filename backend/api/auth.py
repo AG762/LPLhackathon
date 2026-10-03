@@ -16,10 +16,13 @@ import jwt
 
 from http_utils import HttpError
 
-DEMO_USER = {"id": "demo-advisor", "groups": ["advisor", "compliance", "admin"], "signedIn": False}
+DEMO_USER = {"id": "demo-advisor", "groups": ["advisor", "compliance", "admin", "platform"], "signedIn": False,
+             "workspace": None}
 # Ranked: each role can do everything the ones before it can. A user in no group can do nothing.
-# Roles gate actions only. Visibility is per advisor for every role: see routes/files.visible_to.
-RANK = {"advisor": 1, "compliance": 2, "admin": 3}
+# advisor / compliance / admin are roles *within a workspace* and never reach another workspace's data
+# (visibility is per workspace: routes/files.visible_to). platform is the ShredSafe operator: the
+# system-wide routes (demo controls, purge-expired, lock-sensitive) that act across every workspace.
+RANK = {"advisor": 1, "compliance": 2, "admin": 3, "platform": 4}
 
 _jwks = None
 
@@ -48,7 +51,7 @@ def _bearer(headers):
 
 
 def verify(token):
-    """ID token -> {"id", "groups", "signedIn"}. Raises HttpError(401) on anything wrong."""
+    """ID token -> {"id", "groups", "signedIn", "workspace"}. Raises HttpError(401) on anything wrong."""
     client_id = os.environ.get("USER_POOL_CLIENT_ID")
     if not os.environ.get("USER_POOL_ID") or not client_id:
         raise HttpError(401, "Sign-in is not configured on this stack")
@@ -63,7 +66,11 @@ def verify(token):
     if claims.get("token_use") != "id":
         raise HttpError(401, "Invalid sign-in token. Sign in again.")
     groups = [g for g in claims.get("cognito:groups", []) if g in RANK]
-    return {"id": claims.get("email") or claims["sub"], "groups": groups, "signedIn": True}
+    user_id = claims.get("email") or claims["sub"]
+    # custom:workspace is set by the sign-up trigger or scripts/create_user.py; users can't write it
+    # (the app client's WriteAttributes leave it out). Accounts without one get a workspace of their own.
+    workspace = claims.get("custom:workspace") or f"user:{claims['sub']}"
+    return {"id": user_id, "groups": groups, "signedIn": True, "workspace": workspace}
 
 
 def current_user(headers):

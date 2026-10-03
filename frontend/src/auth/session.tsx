@@ -8,7 +8,7 @@ import { configureAuth } from '../api/client'
 export type Session =
   | { status: 'loading' }
   | { status: 'signedOut' }
-  | { status: 'signedIn'; email: string; name?: string; role: string }
+  | { status: 'signedIn'; email: string; name?: string; firm?: string; role: string }
 
 interface SessionApi {
   session: Session
@@ -18,7 +18,7 @@ interface SessionApi {
 
 const SessionContext = createContext<SessionApi | null>(null)
 
-const ROLES = ['admin', 'compliance', 'advisor'] // highest first
+const ROLES = ['platform', 'admin', 'compliance', 'advisor'] // highest first
 
 async function readSession(): Promise<Session> {
   try {
@@ -30,6 +30,7 @@ async function readSession(): Promise<Session> {
       status: 'signedIn',
       email: String(claims.email ?? claims.sub ?? ''),
       name: typeof claims.name === 'string' ? claims.name : undefined,
+      firm: typeof claims['custom:firm'] === 'string' ? claims['custom:firm'] : undefined,
       role: ROLES.find((r) => groups.includes(r)) ?? 'no role',
     }
   } catch {

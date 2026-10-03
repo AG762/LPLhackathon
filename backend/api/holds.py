@@ -1,6 +1,9 @@
 """Legal hold matching for the approve guard.
 
-LegalHolds item: {holdId, scopeType, scopeValue, reason, active}
+LegalHolds item: {holdId, scopeType, scopeValue, reason, active, workspaceId?}
+  A hold only applies to files of its own workspace (workspaceId), so one firm's hold never blocks or
+  reveals anything in another. Holds without a workspace (the seeded demo holds) apply to files without
+  one (uploads made without sign-in).
   scopeType: CLIENT_NAME (substring, case-insensitive) | CLIENT_ID | ACCOUNT_ID | BRANCH_ID | KEYWORD
   KEYWORD matches the file name or client name.
 
@@ -29,6 +32,8 @@ def _norm(value):
 
 
 def matches(hold, file):
+    if hold.get("workspaceId") != file.get("workspaceId"):
+        return False
     scope, value = hold.get("scopeType"), _norm(hold.get("scopeValue"))
     if not value:
         return False

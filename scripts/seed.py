@@ -8,6 +8,7 @@ overwritten by its key. scripts/reset_demo.py calls this after wiping demo data.
     python scripts/seed.py                         # uses stack shredsafe
     python scripts/seed.py --stack shredsafe --region us-east-1
     python scripts/seed.py --prune                 # also delete rules/holds not in the config
+    python scripts/seed.py --workspace ws-...      # demo holds for that workspace instead (sign-in testing)
     python scripts/seed.py --dry-run               # validate config and show what would be written
 """
 import argparse
@@ -112,6 +113,12 @@ def _sync(table, items, key, prune, apply):
     return {"written": len(items), "deleted": len(stale)}
 
 
+def for_workspace(holds, workspace):
+    """Demo holds for one workspace: a hold only covers its own workspace's files (backend/api/holds.py).
+    Ids get the workspace appended so each workspace has its own copy."""
+    return [{**h, "holdId": f"{h['holdId']}@{workspace}", "workspaceId": workspace} for h in holds]
+
+
 def seed(targets, rules, holds, prune=False, apply=True, region=None):
     ddb = boto3.resource("dynamodb", region_name=region)
     return {
@@ -126,9 +133,14 @@ def main(argv=None):
     parser.add_argument("--region", default=os.environ.get("AWS_REGION", "us-east-1"))
     parser.add_argument("--prune", action="store_true", help="delete rules/holds that are not in the config")
     parser.add_argument("--dry-run", action="store_true", help="validate and report without writing")
+    parser.add_argument("--workspace", help="give the demo holds to this workspace (default: no workspace = the demo data)")
     args = parser.parse_args(argv)
 
+    if args.prune and args.workspace:
+        raise SystemExit("--prune with --workspace would delete every other workspace's holds; run them separately")
     rules, holds = load_config()
+    if args.workspace:
+        holds = for_workspace(holds, args.workspace)
     targets = stack_targets(args.stack, args.region)
     summary = seed(targets, rules, holds, prune=args.prune, apply=not args.dry_run, region=args.region)
     verb = "Would write" if args.dry_run else "Wrote"

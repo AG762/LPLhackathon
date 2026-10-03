@@ -23,7 +23,8 @@ export function SignedInUser() {
         <span className="session-email" title={session.email}>
           {shown}
         </span>
-        <span className="session-role">{session.role}</span>
+        {/* Everyone in the workspace sees the same files; the firm says which workspace this is */}
+        <span className="session-role">{session.firm ? `${session.role} · ${session.firm}` : session.role}</span>
       </span>
       <button type="button" className="session-signout" onClick={() => void leave()}>
         Sign out

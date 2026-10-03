@@ -15,13 +15,14 @@ logger.setLevel(logging.INFO)
 ID = r"(?P<file_id>[^/]+)"
 
 # Order matters: literal paths before {id} patterns.
-# Optional 4th item: the role the route needs (default "advisor"; roles rank advisor < compliance < admin, see auth.py).
+# Optional 4th item: the role the route needs (default "advisor"; advisor < compliance < admin < platform, see auth.py).
+# "platform" routes act across every workspace, so no workspace role can reach them.
 ROUTES = [
     ("POST", r"/upload-url", files.upload_url),
     ("GET", r"/files", files.list_files),
     ("POST", r"/files/bulk-approve", disposal.bulk_approve),
-    ("POST", r"/files/purge-expired", disposal.purge_expired, "admin"),
-    ("POST", r"/files/lock-sensitive", records.lock_sensitive, "admin"),
+    ("POST", r"/files/purge-expired", disposal.purge_expired, "platform"),
+    ("POST", r"/files/lock-sensitive", records.lock_sensitive, "platform"),
     ("GET", rf"/files/{ID}", files.get_file),
     ("POST", rf"/files/{ID}/approve", disposal.approve),
     ("POST", rf"/files/{ID}/reject", disposal.reject),
@@ -33,8 +34,8 @@ ROUTES = [
     ("GET", r"/dashboard", dashboard.get),
     ("GET", r"/audit", audit.list_entries),
     ("GET", r"/audit/verify", audit.verify),
-    ("POST", r"/audit/demo/tamper", audit.demo_tamper, "admin"),
-    ("POST", r"/audit/demo/restore", audit.demo_restore, "admin"),
+    ("POST", r"/audit/demo/tamper", audit.demo_tamper, "platform"),
+    ("POST", r"/audit/demo/restore", audit.demo_restore, "platform"),
     ("GET", r"/certificate", audit.certificate),
 ]
 _COMPILED = [(r[0], re.compile(r[1] + r"/?"), r[2], r[3] if len(r) > 3 else "advisor") for r in ROUTES]

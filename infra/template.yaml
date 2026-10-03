@@ -225,6 +225,12 @@ Resources:
           AttributeDataType: String
           Mutable: true
           StringAttributeConstraints: { MinLength: "1", MaxLength: "128" }
+        # Which workspace the user belongs to: people in one workspace see the same files. Set only by the
+        # sign-up trigger or admin scripts; the web client can't write it (WriteAttributes below).
+        - Name: workspace
+          AttributeDataType: String
+          Mutable: true
+          StringAttributeConstraints: { MinLength: "1", MaxLength: "64" }
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: !If [SignUpAllowed, false, true] # AllowSignUp parameter
       AccountRecoverySetting: # "Forgot password" codes go to the verified email (never SMS; there's no phone)
@@ -253,6 +259,9 @@ Resources:
       # off the wire, refresh tokens keep people signed in. The OAuth settings below are kept for SSO later.
       ExplicitAuthFlows: [ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
       PreventUserExistenceErrors: ENABLED # sign-in and password reset don't reveal which emails have accounts
+      # What the browser may set on its own account. custom:workspace is left out on purpose: otherwise a user
+      # could move themselves into another firm's workspace and read its files.
+      WriteAttributes: [email, name, custom:firm]
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthFlows: [code]
       AllowedOAuthScopes: [openid, email, profile]
@@ -279,7 +288,7 @@ Resources:
       Policies:
         - Statement:
             - Effect: Allow
-              Action: cognito-idp:AdminAddUserToGroup
+              Action: [cognito-idp:AdminAddUserToGroup, cognito-idp:AdminUpdateUserAttributes]
               # Wildcard pool: naming UserPool here would be circular (the pool already points at this function)
               Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
       Events:
@@ -291,13 +300,16 @@ Resources:
 
   AdvisorGroup:
     Type: AWS::Cognito::UserPoolGroup
-    Properties: { GroupName: advisor, UserPoolId: !Ref UserPool, Description: Own files only }
+    Properties: { GroupName: advisor, UserPoolId: !Ref UserPool, Description: Works on their workspace's files }
   ComplianceGroup:
     Type: AWS::Cognito::UserPoolGroup
-    Properties: { GroupName: compliance, UserPoolId: !Ref UserPool, Description: All files; runs Macie scans }
+    Properties: { GroupName: compliance, UserPoolId: !Ref UserPool, Description: Compliance tasks in their workspace (same files as everyone there) }
   AdminGroup:
     Type: AWS::Cognito::UserPoolGroup
-    Properties: { GroupName: admin, UserPoolId: !Ref UserPool, Description: Demo controls and system actions }
+    Properties: { GroupName: admin, UserPoolId: !Ref UserPool, Description: Runs their own workspace }
+  PlatformGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: platform, UserPoolId: !Ref UserPool, Description: ShredSafe operator; system-wide routes across all workspaces }
 
 Outputs:
   UserPoolId:

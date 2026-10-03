@@ -20,7 +20,7 @@ function Sidebar() {
   const { files } = useFiles()
   const auth = useOptionalSession()
   const role = auth?.session.status === 'signedIn' ? auth.session.role : null
-  const showAdmin = !signInEnabled || role === 'admin' || role === 'compliance'
+  const showAdmin = !signInEnabled || role === 'admin' || role === 'compliance' || role === 'platform'
   const toReview = files.filter((f) => f.status === 'PENDING').length
 
   const choose = (next: ApiMode) => {

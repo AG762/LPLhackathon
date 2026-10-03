@@ -23,11 +23,13 @@ def upload_url(req):
     params = {"Bucket": aws.bucket(), "Key": key}
     headers = {}
     if req.user and req.user.get("signedIn"):
-        # The owner is signed into the URL, so S3 rejects the upload unless the browser sends exactly
-        # this header: nobody can upload as someone else. `process` copies it to ownerAdvisorId.
-        # Only for signed-in users, so uploads without sign-in (the demo) work as before.
-        params["Metadata"] = {"owner": req.user["id"]}
-        headers["x-amz-meta-owner"] = req.user["id"]
+        # Uploader and workspace are signed into the URL, so S3 rejects the upload unless the browser sends
+        # exactly these headers: nobody can upload as someone else or into another workspace. `process`
+        # copies them to ownerAdvisorId and workspaceId. Only for signed-in users, so uploads without
+        # sign-in (the demo) work as before.
+        meta = {"owner": req.user["id"], "workspace": req.user["workspace"]}
+        params["Metadata"] = meta
+        headers.update({f"x-amz-meta-{k}": v for k, v in meta.items()})
     url = aws.s3().generate_presigned_url("put_object", Params=params, ExpiresIn=UPLOAD_URL_TTL_SECONDS)
     return 200, {"fileId": file_id, "key": key, "url": url, "headers": headers}
 
@@ -63,11 +65,11 @@ def list_files(req):
 
 
 def visible_to(user, file):
-    """Each signed-in user is one advisor and sees only their own files, whatever their role.
-    No user (internal call) or not signed in (the demo, AuthRequired off) sees everything."""
+    """People in the same workspace see the same files, whatever their role; nobody sees another
+    workspace's. No user (internal call) or not signed in (the demo, AuthRequired off) sees everything."""
     if user is None or not user.get("signedIn"):
         return True
-    return file.get("ownerAdvisorId") == user["id"]
+    return file.get("workspaceId") == user["workspace"]
 
 
 def all_files():
