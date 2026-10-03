@@ -12,9 +12,13 @@ import '@fontsource/barlow-condensed/800.css'
 import './index.css'
 import App from './App'
 
+// Behind the online VS Code proxy the app lives under /ports/5173 (`npm run online` sets this).
+// Unset for `npm run dev`, so the app keeps running at the root.
+const routerBase = (import.meta.env.VITE_ROUTER_BASE ?? '').replace(/\/+$/, '') || undefined
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={routerBase}>
       <MotionConfig reducedMotion="user">
         <App />
       </MotionConfig>
