@@ -102,7 +102,7 @@ _Last updated: 2026-10-02_
 | F.13 | Product home page at `/` (startup sales page with shredder hero, "Try it" opens the portal) | ✅ Done (PR #22) | Logo links to `/`; review queue moves to `/queue`. Pricing number still needed from the team |
 | F.14 | Restyle the portal (queue, upload, dashboard, audit) to match the new home page | ✅ Done (PR #22) | Monochrome ink + silver, Geist, pill buttons; safety-sign colours removed |
 | F.15 | Admin panel (`/admin`): team and roles, invites, legal holds, retention rules | ✅ Done (PR #23; live admin routes proposed in docs/admin-api.md) | Frontend only, works in Demo mode. Live needs admin API routes (not built; proposed in the PR). Sign-in/sign-up itself is Arihant's (`arihant-login`), not redone here |
-| F.16 | Sign in / sign up / forgot password pages (UI only) | ✅ Done (PR #24; UI only, Cognito wiring pending) | Our own screens at /signin, /signup, /forgot. Calls go through one adapter (`src/auth/accountApi.ts`) that pretends in Demo mode; connecting it to Cognito is for the login owner (Arihant) |
+| F.16 | Sign in / sign up / forgot password pages (UI only) | ✅ Done (PR #24; connected to Cognito by Arihant in PR #26) | Our own screens at /signin, /signup, /forgot. Calls go through one adapter (`src/auth/accountApi.ts`) that pretends in Demo mode; connecting it to Cognito is for the login owner (Arihant) |
 | F.17 | Launch-ready copy pass over the whole site (home, sign-in, portal, admin) | ✅ Done (PR #25) | Wording only: no hackathon/dev notes in the UI, consistent terms, honest claims |
 | — | `docs/feature-proposals.md` (P1: scan only new or changed files) | ✅ Merged (PR #17) | Team to set the Decision column; mark ✅ there if built |
 
