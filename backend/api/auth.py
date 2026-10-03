@@ -18,6 +18,7 @@ from http_utils import HttpError
 
 DEMO_USER = {"id": "demo-advisor", "groups": ["advisor", "compliance", "admin"], "signedIn": False}
 # Ranked: each role can do everything the ones before it can. A user in no group can do nothing.
+# Roles gate actions only. Visibility is per advisor for every role: see routes/files.visible_to.
 RANK = {"advisor": 1, "compliance": 2, "admin": 3}
 
 _jwks = None
@@ -76,11 +77,6 @@ def current_user(headers):
 
 def _level(user):
     return max((RANK[g] for g in user["groups"]), default=0)
-
-
-def sees_all_files(user):
-    """Compliance and admin see every advisor's files; advisors see only their own."""
-    return _level(user) >= RANK["compliance"]
 
 
 def require_role(user, role):

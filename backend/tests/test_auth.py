@@ -107,10 +107,8 @@ def test_admin_routes_need_admin(aws, required, method, path):
     assert call(method, path, token(groups=("admin",)))[0] != 403
 
 
-def test_scan_needs_compliance_and_admin_inherits_it(aws, required, macie):  # noqa: F811
-    assert call("POST", "/scan", token(groups=("advisor",)))[0] == 403
-    assert call("POST", "/scan", token(groups=("compliance",)))[0] == 200
-    assert call("POST", "/scan", token(groups=("admin",)))[0] == 200
+def test_any_advisor_can_scan(aws, required, macie):  # noqa: F811
+    assert call("POST", "/scan", token(groups=("advisor",)))[0] == 200
     assert call("GET", "/scan/status", token(groups=("advisor",)))[0] == 200
 
 
@@ -241,9 +239,10 @@ def test_advisor_sees_only_their_files(two_advisors, required):
     assert call("GET", "/dashboard", token("alex@example.com"))[1]["totalFiles"] == 1
 
 
-def test_compliance_sees_everyone(two_advisors, required):
-    files = call("GET", "/files", token("cara@example.com", groups=("compliance",)))[1]
-    assert sorted(f["fileId"] for f in files) == ["mine", "nobody", "theirs"]
+@pytest.mark.parametrize("groups", [("compliance",), ("admin",)])
+def test_every_role_sees_only_their_own_files(two_advisors, required, groups):
+    assert call("GET", "/files", token("cara@example.com", groups=groups))[1] == []
+    assert call("GET", "/files/mine", token("cara@example.com", groups=groups))[0] == 404
 
 
 def test_someone_elses_file_is_404_for_every_action(two_advisors, required):
@@ -277,3 +276,32 @@ def test_frontend_env_script_maps_stack_outputs():
         "VITE_API_MODE=live", "VITE_DEMO_CONTROLS=true"]
     with pytest.raises(SystemExit, match="CognitoDomain"):
         frontend_env.env_lines(outputs[:3])
+
+
+def test_audit_log_shows_only_your_files_and_actions(two_advisors, required):
+    call("POST", "/files/mine/approve", token("alex@example.com"))
+    call("POST", "/files/theirs/approve", token("sam@example.com"))
+    alex_entries = call("GET", "/audit", token("alex@example.com"))[1]
+    assert alex_entries and {e["fileId"] for e in alex_entries} == {"mine"}
+    assert all(e["actor"] == "alex@example.com" for e in alex_entries)
+    assert call("GET", "/audit/verify", token("alex@example.com"))[1] == {"ok": True}  # whole chain, ok/broken only
+
+
+def test_certificate_lists_only_your_disposed_files(two_advisors, required, monkeypatch):
+    import certificate
+    seen = {}
+    real = certificate.disposed_files
+    monkeypatch.setattr(certificate, "disposed_files", lambda *a: seen.setdefault("files", real(*a)))
+    call("POST", "/files/mine/approve", token("alex@example.com"))
+    call("POST", "/files/theirs/approve", token("sam@example.com"))
+    res = handler.main({**event("GET", "/certificate"), "headers": {"authorization": f"Bearer {token('alex@example.com')}"}}, None)
+    assert res["statusCode"] == 200
+    assert [f["fileId"] for f in seen["files"]] == ["mine"]
+
+
+def test_scan_ingest_reports_only_your_files(two_advisors, required, macie):  # noqa: F811
+    from datetime import datetime, timezone
+    macie.jobs.append({"jobId": "job-1", "name": f"{BUCKET}-x", "jobStatus": "COMPLETE",
+                       "createdAt": datetime(2999, 1, 1, tzinfo=timezone.utc)})
+    body = call("POST", "/scan/ingest", token("alex@example.com"))[1]
+    assert body["updated"] == 1  # all three files were scored, alex hears about his one

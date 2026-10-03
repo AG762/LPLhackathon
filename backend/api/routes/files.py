@@ -3,7 +3,6 @@ import os
 import uuid
 from decimal import Decimal
 
-import auth
 import aws
 import holds
 from http_utils import HttpError
@@ -64,8 +63,26 @@ def list_files(req):
 
 
 def visible_to(user, file):
-    """Advisors see their own files; compliance and admin see all. No user = internal call."""
-    return user is None or auth.sees_all_files(user) or file.get("ownerAdvisorId") == user["id"]
+    """Each signed-in user is one advisor and sees only their own files, whatever their role.
+    No user (internal call) or not signed in (the demo, AuthRequired off) sees everything."""
+    if user is None or not user.get("signedIn"):
+        return True
+    return file.get("ownerAdvisorId") == user["id"]
+
+
+def all_files():
+    table = aws.table("FILES_TABLE")
+    items, kwargs = [], {}
+    while True:
+        page = table.scan(**kwargs)
+        items.extend(page.get("Items", []))
+        if "LastEvaluatedKey" not in page:
+            return items
+        kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+
+
+def visible_file_ids(user):
+    return {f["fileId"] for f in all_files() if visible_to(user, f)}
 
 
 def load_file(file_id, user=None):

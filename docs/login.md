@@ -17,7 +17,8 @@ This doc is also the answer to "how would users log in?" on stage.
 - Approve, reject, restore and blocked approvals record the signed-in user's email (`approvedBy`, audit `actor`, ...).
 - **Ownership:** for signed-in users `/upload-url` signs `x-amz-meta-owner` into the upload URL and returns it in
   `headers`; the frontend sends it; `process` saves it as `ownerAdvisorId`. Advisors only see and act on their own
-  files (others' files are 404); compliance/admin see all; an advisor's dashboard covers their files.
+  files (others' files are 404) whatever their role; dashboard, audit list, certificate and scan results cover only
+  their files. `/audit/verify` still checks the whole chain but only answers ok / broken-at.
   Uploads without sign-in carry no owner, so the demo and older frontends work unchanged.
 - Frontend: `src/auth/` (`react-oidc-context`). Sign-in screen in Live mode when `VITE_COGNITO_*` are set; the ID
   token goes on every API call; a 401 sends you to sign in again; the sidebar shows the email, role and **Sign out**.
@@ -26,8 +27,9 @@ This doc is also the answer to "how would users log in?" on stage.
 
 ### Not built yet
 
-- The audit log and certificate aren't filtered per advisor (everyone signed in sees the whole log).
-- Files uploaded before sign-in have no owner, so only compliance/admin see them once sign-in is required.
+- The Audit page labels the last entry *it shows* as the chain head; for a filtered (per-advisor) list that's the
+  advisor's latest entry, not the true head. Cosmetic; the integrity check itself uses the whole chain.
+- Files uploaded before sign-in have no owner, so no signed-in user sees them.
 
 ## Today
 
@@ -66,13 +68,17 @@ Browser ──(1) redirect──► Cognito managed login page (email + password
 
 ## Roles and rules
 
+**Each signed-in user is one advisor and sees only their own files, whatever their role.** Nobody can see or act on
+another advisor's files, audit entries or certificate lines. Roles only gate *actions*:
+
 | Role (Cognito group) | Can |
 |---|---|
-| `advisor` | Upload; see and act on **their own** files; approve/reject/restore; see their dashboard and audit entries |
-| `compliance` | Everything an advisor can, for **all** files; manage legal holds (future UI); run Macie scans |
-| `admin` | Demo controls (`/audit/demo/*`), `purge-expired`, `lock-sensitive` |
+| `advisor` | Upload; see and act on their own files; run Macie scans; their own dashboard, audit entries and certificate |
+| `compliance` | Same as advisor today (reserved for future firm-wide features, which would need an explicit decision to share data) |
+| `admin` | Also: demo controls (`/audit/demo/*`), `purge-expired`, `lock-sensitive` (system actions across the bucket) |
 
 The disposal guards don't change: a held or still-retained file is refused for **every** role, including admin.
+Without sign-in (`AuthRequired=false`, no token) the demo user still sees everything, as before.
 
 ## Implementation steps
 
