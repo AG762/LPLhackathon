@@ -3,6 +3,7 @@ import os
 import uuid
 from decimal import Decimal
 
+import auth
 import aws
 import holds
 from http_utils import HttpError
@@ -20,12 +21,16 @@ def upload_url(req):
     # The `process` Lambda parses fileId out of this key: uploads/<fileId>/<filename>.
     # It creates the Files row on the S3 event, so nothing is written here.
     key = f"uploads/{file_id}/{filename}"
-    url = aws.s3().generate_presigned_url(
-        "put_object",
-        Params={"Bucket": aws.bucket(), "Key": key},
-        ExpiresIn=UPLOAD_URL_TTL_SECONDS,
-    )
-    return 200, {"fileId": file_id, "key": key, "url": url}
+    params = {"Bucket": aws.bucket(), "Key": key}
+    headers = {}
+    if req.user and req.user.get("signedIn"):
+        # The owner is signed into the URL, so S3 rejects the upload unless the browser sends exactly
+        # this header: nobody can upload as someone else. `process` copies it to ownerAdvisorId.
+        # Only for signed-in users, so uploads without sign-in (the demo) work as before.
+        params["Metadata"] = {"owner": req.user["id"]}
+        headers["x-amz-meta-owner"] = req.user["id"]
+    url = aws.s3().generate_presigned_url("put_object", Params=params, ExpiresIn=UPLOAD_URL_TTL_SECONDS)
+    return 200, {"fileId": file_id, "key": key, "url": url, "headers": headers}
 
 
 def list_files(req):
@@ -39,6 +44,7 @@ def list_files(req):
             break
         kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
 
+    items = [f for f in items if visible_to(req.user, f)]
     status = req.query.get("status")
     if status:
         items = [f for f in items if f.get("status") == status]
@@ -57,9 +63,15 @@ def list_files(req):
     return 200, items
 
 
-def load_file(file_id):
+def visible_to(user, file):
+    """Advisors see their own files; compliance and admin see all. No user = internal call."""
+    return user is None or auth.sees_all_files(user) or file.get("ownerAdvisorId") == user["id"]
+
+
+def load_file(file_id, user=None):
     item = aws.table("FILES_TABLE").get_item(Key={"fileId": file_id}).get("Item")
-    if not item:
+    # Someone else's file is a 404, not a 403, so file ids can't be probed
+    if not item or not visible_to(user, item):
         raise HttpError(404, "File not found")
     return item
 
@@ -76,4 +88,4 @@ def _flag_hold(item, active_holds):
 
 
 def get_file(req):
-    return 200, _flag_hold(load_file(req.params["file_id"]), holds.active_holds())
+    return 200, _flag_hold(load_file(req.params["file_id"], req.user), holds.active_holds())

@@ -1,7 +1,7 @@
 # Adding user login
 
-Status: **steps 1–2 built (infra + API), switched off.** `AuthRequired=false` keeps today's behaviour: requests without
-a token act as the demo advisor with every role. Steps 3–4 (frontend sign-in, file ownership) are open; see STATUS.md.
+Status: **built, switched off.** `AuthRequired=false` keeps today's behaviour: requests without a token act as the
+demo advisor with every role, and the frontend only shows sign-in when the Cognito settings are configured.
 This doc is also the answer to "how would users log in?" on stage.
 
 ### What's built
@@ -10,18 +10,24 @@ This doc is also the answer to "how would users log in?" on stage.
   sign-in domain, `web` app client (code + PKCE, no secret, 1 h tokens), groups `advisor` / `compliance` / `admin`,
   `Authorization` allowed by CORS, parameters `AuthRequired` and `FrontendBasePath`, outputs `UserPoolId`,
   `UserPoolClientId`, `CognitoAuthority`, `CognitoDomain`.
-- `backend/api/auth.py` + `handler.dispatch`: every route checks the caller before running. Roles are **ranked**
+- `backend/api/auth.py` + `handler.dispatch`: every route checks the caller before running. The API takes the Cognito
+  **ID token** (it carries the email; with email sign-in the access token's username is a random id), checked for
+  signature, issuer, audience (our app client), expiry and `token_use`. Roles are **ranked**
   (admin ⊇ compliance ⊇ advisor); a signed-in user in no group gets 403. Route roles are the 4th item in `ROUTES`.
-- Approve, reject, restore and blocked approvals record the signed-in user (`approvedBy`, audit `actor`, ...).
-- `scripts/create_user.py`: create a user and add them to a group.
-- Tests: `backend/tests/test_auth.py` (signature, issuer, expiry, client id, token type, roles, recorded user).
+- Approve, reject, restore and blocked approvals record the signed-in user's email (`approvedBy`, audit `actor`, ...).
+- **Ownership:** for signed-in users `/upload-url` signs `x-amz-meta-owner` into the upload URL and returns it in
+  `headers`; the frontend sends it; `process` saves it as `ownerAdvisorId`. Advisors only see and act on their own
+  files (others' files are 404); compliance/admin see all; an advisor's dashboard covers their files.
+  Uploads without sign-in carry no owner, so the demo and older frontends work unchanged.
+- Frontend: `src/auth/` (`react-oidc-context`). Sign-in screen in Live mode when `VITE_COGNITO_*` are set; the ID
+  token goes on every API call; a 401 sends you to sign in again; the sidebar shows the email, role and **Sign out**.
+- Scripts: `create_user.py` (accounts, `--password` for test accounts), `frontend_env.py` (frontend settings from a stack).
+- Tests: `backend/tests/test_auth.py`.
 
 ### Not built yet
 
-- **Frontend sign-in (step 3).** Until then nothing sends a token, so leave `AuthRequired=false`.
-- **File ownership.** Signing `x-amz-meta-owner` into the upload URL makes S3 reject any upload that doesn't send that
-  header, which today's frontend doesn't. Add it together with step 3, plus `process` saving `ownerAdvisorId`
-  (Anwesh) and advisors-see-own-files filtering in the API.
+- The audit log and certificate aren't filtered per advisor (everyone signed in sees the whole log).
+- Files uploaded before sign-in have no owner, so only compliance/admin see them once sign-in is required.
 
 ## Today
 

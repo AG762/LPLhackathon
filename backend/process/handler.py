@@ -141,6 +141,9 @@ def process_file_event(event, context):
         pii_types = [str(t) for t in classification.get("pii_detected") or [] if _known(t)]
         if pii_types:
             item["piiTypes"] = pii_types  # B.7 scores images Macie can't read from these
+        owner = (resp.get("Metadata") or {}).get("owner")
+        if owner:
+            item["ownerAdvisorId"] = owner  # signed into the upload URL by the API for signed-in users (docs/login.md)
 
         try:
             table.put_item(Item=item)

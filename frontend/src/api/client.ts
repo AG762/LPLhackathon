@@ -15,7 +15,7 @@ export { ApiError }
 
 export interface Api {
   uploadUrl(filename: string): Promise<UploadUrlResponse>
-  putFile(url: string, file: File, onProgress: (fraction: number) => void): Promise<void>
+  putFile(url: string, file: File, onProgress: (fraction: number) => void, headers?: Record<string, string>): Promise<void>
   listFiles(opts?: { status?: FileStatus; sort?: 'priority' }): Promise<FileRecord[]>
   getFile(id: string): Promise<FileRecord>
   approve(id: string): Promise<FileRecord>
@@ -59,13 +59,28 @@ export function setMode(mode: ApiMode) {
   window.location.reload()
 }
 
+// Sign-in (docs/login.md): AuthBridge in App.tsx registers how to get the access token and what to do on a 401.
+// Without sign-in configured both stay no-ops and requests go out without a token, as before.
+let getToken: () => string | undefined = () => undefined
+let onUnauthorized: () => void = () => {}
+
+export function configureAuth(opts: { getToken: () => string | undefined; onUnauthorized: () => void }) {
+  getToken = opts.getToken
+  onUnauthorized = opts.onUnauthorized
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken()
+  return token ? { authorization: `Bearer ${token}` } : {}
+}
+
 async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   if (!BASE_URL) throw new ApiError(0, 'VITE_API_URL is not set. Add it to frontend/.env.local.')
   let res: Response
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       method,
-      headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+      headers: { ...authHeaders(), ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch {
@@ -80,16 +95,24 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
       /* non-JSON error body */
     }
     if (res.status === 501) message = `Not built on the backend yet: ${message}`
+    if (res.status === 401) onUnauthorized()
     throw new ApiError(res.status, message)
   }
   return res.json() as Promise<T>
 }
 
 // S3 presigned PUT. Uses XHR because fetch has no upload progress events.
-export function putWithProgress(url: string, file: File, onProgress: (fraction: number) => void) {
+export function putWithProgress(
+  url: string,
+  file: File,
+  onProgress: (fraction: number) => void,
+  headers: Record<string, string> = {},
+) {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('PUT', url)
+    // Headers signed into the URL (the owner, when signed in) must be sent exactly or S3 rejects the upload
+    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value)
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(e.loaded / e.total)
     }
@@ -133,7 +156,8 @@ const liveApi: Api = {
   },
   certificate: async () => {
     if (!BASE_URL) throw new ApiError(0, 'VITE_API_URL is not set.')
-    const res = await fetch(`${BASE_URL}/certificate`)
+    const res = await fetch(`${BASE_URL}/certificate`, { headers: authHeaders() })
+    if (res.status === 401) onUnauthorized()
     if (!res.ok) {
       let message = res.status === 501 ? 'Not built on the backend yet: certificate' : `Certificate failed (${res.status})`
       try {

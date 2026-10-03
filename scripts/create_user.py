@@ -1,10 +1,12 @@
 """Create a sign-in user in the stack's Cognito user pool and put them in a role group (docs/login.md).
 
 Cognito emails the user a temporary password; their first sign-in asks for a new one.
+For test accounts on addresses that can't receive mail, --password sets a permanent password and sends nothing.
 
     python scripts/create_user.py alex@example.com                  # advisor
     python scripts/create_user.py sam@example.com --role compliance
     python scripts/create_user.py admin@example.com --role admin --stack shredsafe --region us-east-1
+    python scripts/create_user.py test@example.com --password 'Long-test-pass-1' --stack shredsafe-login
 """
 import argparse
 import os
@@ -22,17 +24,20 @@ def user_pool_id(stack, region):
     raise SystemExit("Stack has no UserPoolId output; deploy the sign-in resources first (sam build && sam deploy)")
 
 
-def create_user(cognito, pool, email, role):
+def create_user(cognito, pool, email, role, password=None):
     """Create the user if needed (existing users are left alone) and add them to the role's group."""
+    invite = {"MessageAction": "SUPPRESS"} if password else {"DesiredDeliveryMediums": ["EMAIL"]}
     try:
         cognito.admin_create_user(
             UserPoolId=pool, Username=email,
             UserAttributes=[{"Name": "email", "Value": email}, {"Name": "email_verified", "Value": "true"}],
-            DesiredDeliveryMediums=["EMAIL"],
+            **invite,
         )
         created = True
     except cognito.exceptions.UsernameExistsException:
         created = False
+    if password:
+        cognito.admin_set_user_password(UserPoolId=pool, Username=email, Password=password, Permanent=True)
     cognito.admin_add_user_to_group(UserPoolId=pool, Username=email, GroupName=role)
     return created
 
@@ -43,12 +48,15 @@ def main(argv=None):
     parser.add_argument("--role", choices=ROLES, default="advisor")
     parser.add_argument("--stack", default="shredsafe")
     parser.add_argument("--region", default=os.environ.get("AWS_REGION", "us-east-1"))
+    parser.add_argument("--password", help="set a permanent password and send no email (test accounts)")
     args = parser.parse_args(argv)
 
     pool = user_pool_id(args.stack, args.region)
     cognito = boto3.client("cognito-idp", region_name=args.region)
-    created = create_user(cognito, pool, args.email, args.role)
-    if created:
+    created = create_user(cognito, pool, args.email, args.role, args.password)
+    if created and args.password:
+        print(f"Created {args.email} as {args.role} with the password you gave.")
+    elif created:
         print(f"Created {args.email} as {args.role}. Cognito emailed a temporary password.")
     else:
         print(f"{args.email} already existed; added to {args.role}.")

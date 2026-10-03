@@ -64,8 +64,8 @@ export default function UploadPage() {
         const it = fresh[next++]
         update(it.key, { state: 'uploading' })
         try {
-          const { url } = await api.uploadUrl(it.file.name)
-          await api.putFile(url, it.file, (p) => update(it.key, { progress: p }))
+          const { url, headers } = await api.uploadUrl(it.file.name)
+          await api.putFile(url, it.file, (p) => update(it.key, { progress: p }), headers)
           update(it.key, { state: 'done', progress: 1 })
         } catch (e) {
           update(it.key, { state: 'failed', error: e instanceof Error ? e.message : String(e) })

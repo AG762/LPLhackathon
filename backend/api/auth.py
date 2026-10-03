@@ -1,8 +1,11 @@
-"""Who is calling: Cognito access-token check (docs/login.md, steps 1-2).
+"""Who is calling: Cognito ID-token check (docs/login.md).
 
 The Function URL is public (AuthType NONE), so the check happens here, once, in handler.dispatch.
 
-- AUTH_REQUIRED=true: every request needs `Authorization: Bearer <Cognito access token>`.
+- AUTH_REQUIRED=true: every request needs `Authorization: Bearer <Cognito ID token>`.
+  ID token, not access token: with email sign-in the access token has no email and its username is a
+  random id, so audit entries would read "3f9c...". The ID token is signed the same way, is issued to
+  our app client (aud), and is what API Gateway's Cognito authorizer checks by default.
 - AUTH_REQUIRED off (the default, and the demo): requests without a token act as the demo advisor
   with every role, exactly like before login existed. A token that *is* sent is still verified, so
   the real user is recorded once the frontend starts sending one.
@@ -13,7 +16,7 @@ import jwt
 
 from http_utils import HttpError
 
-DEMO_USER = {"id": "demo-advisor", "groups": ["advisor", "compliance", "admin"]}
+DEMO_USER = {"id": "demo-advisor", "groups": ["advisor", "compliance", "admin"], "signedIn": False}
 # Ranked: each role can do everything the ones before it can. A user in no group can do nothing.
 RANK = {"advisor": 1, "compliance": 2, "admin": 3}
 
@@ -44,22 +47,22 @@ def _bearer(headers):
 
 
 def verify(token):
-    """Access token -> {"id", "groups"}. Raises HttpError(401) on anything wrong."""
-    if not os.environ.get("USER_POOL_ID") or not os.environ.get("USER_POOL_CLIENT_ID"):
+    """ID token -> {"id", "groups", "signedIn"}. Raises HttpError(401) on anything wrong."""
+    client_id = os.environ.get("USER_POOL_CLIENT_ID")
+    if not os.environ.get("USER_POOL_ID") or not client_id:
         raise HttpError(401, "Sign-in is not configured on this stack")
     try:
         key = _jwks_client().get_signing_key_from_jwt(token).key
-        # Access tokens carry client_id instead of aud, so aud is checked by hand below
-        claims = jwt.decode(token, key, algorithms=["RS256"], issuer=_issuer(),
-                            options={"verify_aud": False, "require": ["exp", "iat", "sub"]})
+        claims = jwt.decode(token, key, algorithms=["RS256"], issuer=_issuer(), audience=client_id,
+                            options={"require": ["exp", "iat", "sub", "aud"]})
     except jwt.ExpiredSignatureError:
         raise HttpError(401, "Your session expired. Sign in again.")
     except jwt.PyJWTError:
         raise HttpError(401, "Invalid sign-in token. Sign in again.")
-    if claims.get("token_use") != "access" or claims.get("client_id") != os.environ["USER_POOL_CLIENT_ID"]:
+    if claims.get("token_use") != "id":
         raise HttpError(401, "Invalid sign-in token. Sign in again.")
     groups = [g for g in claims.get("cognito:groups", []) if g in RANK]
-    return {"id": claims.get("username") or claims["sub"], "groups": groups}
+    return {"id": claims.get("email") or claims["sub"], "groups": groups, "signedIn": True}
 
 
 def current_user(headers):
@@ -71,9 +74,17 @@ def current_user(headers):
     return DEMO_USER
 
 
+def _level(user):
+    return max((RANK[g] for g in user["groups"]), default=0)
+
+
+def sees_all_files(user):
+    """Compliance and admin see every advisor's files; advisors see only their own."""
+    return _level(user) >= RANK["compliance"]
+
+
 def require_role(user, role):
-    level = max((RANK[g] for g in user["groups"]), default=0)
-    if level < RANK[role]:
+    if _level(user) < RANK[role]:
         raise HttpError(403, f"This needs the {role} role")
 
 

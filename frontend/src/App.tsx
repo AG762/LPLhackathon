@@ -1,6 +1,8 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { mode, setMode, type ApiMode } from './api/client'
 import { DEMO_ADVISOR } from './lib/format'
+import { AuthGate, SignedInUser } from './auth/AuthGate'
+import { signInEnabled } from './auth/config'
 import { FilesProvider, useFiles } from './state/files'
 import { ToastProvider } from './state/toast'
 import QueuePage from './pages/Queue'
@@ -46,10 +48,14 @@ function Sidebar() {
         <NavLink to="/audit">Audit log</NavLink>
       </nav>
       <div className="sidebar-foot">
-        <div className="advisor">
-          <div className="advisor-name">{DEMO_ADVISOR.name}</div>
-          <div className="muted">{DEMO_ADVISOR.branch}</div>
-        </div>
+        {signInEnabled ? (
+          <SignedInUser />
+        ) : (
+          <div className="advisor">
+            <div className="advisor-name">{DEMO_ADVISOR.name}</div>
+            <div className="muted">{DEMO_ADVISOR.branch}</div>
+          </div>
+        )}
         <div>
           <div className="muted mode-label" id="mode-label" style={{ marginBottom: 6 }}>
             Data source
@@ -72,7 +78,7 @@ function Sidebar() {
 }
 
 export default function App() {
-  return (
+  const app = (
     <ToastProvider>
       <FilesProvider>
         <div className="shell">
@@ -90,4 +96,6 @@ export default function App() {
       </FilesProvider>
     </ToastProvider>
   )
+  // Signed-out users see only the sign-in screen, so nothing calls the API without a token
+  return signInEnabled ? <AuthGate>{app}</AuthGate> : app
 }

@@ -86,8 +86,9 @@ def _move_object(src, dest):
     s3.delete_object(Bucket=aws.bucket(), Key=src)
 
 
-def _approve(file_id, actor):
-    file = load_file(file_id)
+def _approve(file_id, user):
+    file = load_file(file_id, user)
+    actor = user["id"]
     _check_can_approve(file, actor)
 
     approved_at = _now()
@@ -113,11 +114,11 @@ def _approve(file_id, actor):
 
 
 def approve(req):
-    return 200, _approve(req.params["file_id"], req.user["id"])
+    return 200, _approve(req.params["file_id"], req.user)
 
 
 def reject(req):
-    file = load_file(req.params["file_id"])
+    file = load_file(req.params["file_id"], req.user)
     if file.get("status") != "PENDING":
         raise HttpError(409, f"File is {file.get('status')}, only PENDING files can be rejected")
     reason = str(req.body.get("reason", ""))[:500]
@@ -137,7 +138,7 @@ def bulk_approve(req):
     approved, blocked = [], []
     for file_id in dict.fromkeys(ids):  # dedupe, keep order
         try:
-            approved.append(_approve(file_id, req.user["id"]))
+            approved.append(_approve(file_id, req.user))
         except HttpError as e:
             blocked.append({"fileId": file_id, "status": e.status, "error": e.message})
     return 200, {"approved": approved, "blocked": blocked}
@@ -149,7 +150,7 @@ def restore(req):
     The object goes to restored/, not back to uploads/: the process Lambda's S3 trigger only
     watches uploads/, so restoring never re-classifies the file. Approve accepts restored/ keys.
     """
-    file = load_file(req.params["file_id"])
+    file = load_file(req.params["file_id"], req.user)
     if file.get("status") != "QUARANTINED":
         raise HttpError(409, f"File is {file.get('status')}, only QUARANTINED files can be restored")
     purge_after = file.get("purgeAfter")
@@ -211,7 +212,7 @@ def _purge(file):
 
 def purge(req):
     """Purge one quarantined file. Before its grace period ends this is a demo-only "purge now"."""
-    file = load_file(req.params["file_id"])
+    file = load_file(req.params["file_id"], req.user)
     if file.get("status") != "QUARANTINED":
         raise HttpError(409, f"File is {file.get('status')}, only QUARANTINED files can be purged")
     if not _grace_over(file) and os.environ.get("DEMO_CONTROLS") != "true":

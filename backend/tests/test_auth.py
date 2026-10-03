@@ -1,4 +1,4 @@
-"""Sign-in: Cognito access tokens checked in handler.dispatch (docs/login.md, steps 1-2).
+"""Sign-in: Cognito ID tokens checked in handler.dispatch, and per-advisor file ownership (docs/login.md).
 
 Tokens are signed with a throwaway RSA key shaped like Cognito's, and the key lookup is pointed at
 it, so the real verification code (signature, issuer, expiry, client_id, token_use) runs."""
@@ -43,8 +43,8 @@ def required(monkeypatch):
 
 def token(user="alex@example.com", groups=("advisor",), key=KEY, **overrides):
     now = int(time.time())
-    claims = {"sub": "1111-2222", "username": user, "cognito:groups": list(groups), "token_use": "access",
-              "client_id": CLIENT, "iss": ISSUER, "iat": now, "exp": now + 3600, **overrides}
+    claims = {"sub": "1111-2222", "email": user, "cognito:groups": list(groups), "token_use": "id",
+              "aud": CLIENT, "iss": ISSUER, "iat": now, "exp": now + 3600, **overrides}
     claims = {k: v for k, v in claims.items() if v is not None}
     return jwt.encode(claims, key, algorithm="RS256")
 
@@ -80,8 +80,9 @@ def test_bearer_scheme_is_case_insensitive(aws, required):
     (lambda: token(exp=int(time.time()) - 10), "expired"),
     (lambda: token(key=OTHER_KEY), "Invalid"),                  # not signed by the pool
     (lambda: token(iss="https://cognito-idp.us-east-1.amazonaws.com/other"), "Invalid"),
-    (lambda: token(client_id="another-app"), "Invalid"),        # issued to a different app client
-    (lambda: token(token_use="id"), "Invalid"),                 # ID token instead of access token
+    (lambda: token(aud="another-app"), "Invalid"),              # issued to a different app client
+    (lambda: token(token_use="access"), "Invalid"),             # access token instead of ID token
+    (lambda: token(aud=None), "Invalid"),                       # no audience
     (lambda: token(exp=None), "Invalid"),                       # no expiry
     (lambda: "not-a-jwt", "Invalid"),
 ])
@@ -120,8 +121,8 @@ def test_unknown_route_is_still_404(aws, required):
 # ---------- the real user is recorded ----------
 
 def test_approve_and_reject_record_the_signed_in_user(aws, required, s3):
-    add_file(aws, s3, "a")
-    add_file(aws, s3, "b")
+    add_file(aws, s3, "a", ownerAdvisorId="alex@example.com")
+    add_file(aws, s3, "b", ownerAdvisorId="sam@example.com")
     approved = call("POST", "/files/a/approve", token("alex@example.com"))[1]
     rejected = call("POST", "/files/b/reject", token("sam@example.com"), body={"reason": "still needed"})[1]
     assert approved["approvedBy"] == "alex@example.com"
@@ -132,7 +133,7 @@ def test_approve_and_reject_record_the_signed_in_user(aws, required, s3):
 
 
 def test_blocked_approval_records_who_tried(aws, required, s3):
-    add_file(aws, s3, "held", clientName="Margaret Whitaker")
+    add_file(aws, s3, "held", clientName="Margaret Whitaker", ownerAdvisorId="alex@example.com")
     boto3.resource("dynamodb").Table("LegalHolds").put_item(Item={
         "holdId": "H-1", "scopeType": "CLIENT_NAME", "scopeValue": "Margaret Whitaker", "active": True})
     assert call("POST", "/files/held/approve", token("alex@example.com"))[0] == 409
@@ -141,7 +142,7 @@ def test_blocked_approval_records_who_tried(aws, required, s3):
 
 
 def test_bulk_approve_records_the_signed_in_user(aws, required, s3):
-    add_file(aws, s3, "a")
+    add_file(aws, s3, "a", ownerAdvisorId="alex@example.com")
     body = call("POST", "/files/bulk-approve", token("alex@example.com"), body={"ids": ["a"]})[1]
     assert body["approved"][0]["approvedBy"] == "alex@example.com"
 
@@ -155,7 +156,7 @@ def test_off_without_token_acts_as_demo_advisor(aws, s3):
 
 
 def test_off_with_token_records_the_real_user(aws, s3):
-    add_file(aws, s3, "a")
+    add_file(aws, s3, "a", ownerAdvisorId="alex@example.com")
     assert call("POST", "/files/a/approve", token("alex@example.com"))[1]["approvedBy"] == "alex@example.com"
 
 
@@ -195,8 +196,84 @@ def test_create_user_script_creates_then_only_regroups():
         def admin_add_user_to_group(self, **kw):
             calls.append(("group", kw["Username"], kw["GroupName"]))
 
+        def admin_set_user_password(self, **kw):
+            calls.append(("password", kw["Username"], kw["Permanent"]))
+
     cognito = FakeCognito()
     assert create_user.create_user(cognito, POOL, "alex@example.com", "advisor") is True
     assert create_user.create_user(cognito, POOL, "alex@example.com", "compliance") is False
     assert calls == [("create", "alex@example.com"), ("group", "alex@example.com", "advisor"),
                      ("group", "alex@example.com", "compliance")]
+    calls.clear()
+    assert create_user.create_user(cognito, POOL, "test@example.com", "admin", password="Long-test-pass-1") is True
+    assert calls == [("create", "test@example.com"), ("password", "test@example.com", True),
+                     ("group", "test@example.com", "admin")]
+
+
+def test_user_id_falls_back_to_sub_without_email(aws, s3):
+    add_file(aws, s3, "a", ownerAdvisorId="1111-2222")
+    assert call("POST", "/files/a/approve", token(email=None))[1]["approvedBy"] == "1111-2222"
+
+
+# ---------- file ownership ----------
+
+def test_signed_in_upload_url_signs_the_owner(aws, required):
+    body = call("POST", "/upload-url", token("alex@example.com"), body={"filename": "a.pdf"})[1]
+    assert body["headers"] == {"x-amz-meta-owner": "alex@example.com"}
+    assert "x-amz-meta-owner" in body["url"]  # in X-Amz-SignedHeaders: S3 rejects uploads without it
+
+
+def test_upload_url_without_sign_in_has_no_owner(aws):
+    body = call("POST", "/upload-url", body={"filename": "a.pdf"})[1]
+    assert body["headers"] == {} and "x-amz-meta-owner" not in body["url"]
+
+
+@pytest.fixture
+def two_advisors(aws, s3):
+    add_file(aws, s3, "mine", ownerAdvisorId="alex@example.com", sizeBytes=10)
+    add_file(aws, s3, "theirs", ownerAdvisorId="sam@example.com", sizeBytes=90)
+    add_file(aws, s3, "nobody", sizeBytes=5)  # uploaded before sign-in existed
+
+
+def test_advisor_sees_only_their_files(two_advisors, required):
+    files = call("GET", "/files", token("alex@example.com"))[1]
+    assert [f["fileId"] for f in files] == ["mine"]
+    assert call("GET", "/dashboard", token("alex@example.com"))[1]["totalFiles"] == 1
+
+
+def test_compliance_sees_everyone(two_advisors, required):
+    files = call("GET", "/files", token("cara@example.com", groups=("compliance",)))[1]
+    assert sorted(f["fileId"] for f in files) == ["mine", "nobody", "theirs"]
+
+
+def test_someone_elses_file_is_404_for_every_action(two_advisors, required):
+    alex = token("alex@example.com")
+    assert call("GET", "/files/theirs", alex)[0] == 404
+    assert call("POST", "/files/theirs/approve", alex)[0] == 404
+    assert call("POST", "/files/theirs/reject", alex)[0] == 404
+    assert call("POST", "/files/theirs/restore", alex)[0] == 404
+    blocked = call("POST", "/files/bulk-approve", alex, body={"ids": ["mine", "theirs"]})[1]
+    assert [f["fileId"] for f in blocked["approved"]] == ["mine"]
+    assert blocked["blocked"] == [{"fileId": "theirs", "status": 404, "error": "File not found"}]
+
+
+def test_demo_user_without_sign_in_sees_everything(two_advisors):
+    assert len(call("GET", "/files")[1]) == 3
+
+
+def test_frontend_env_script_maps_stack_outputs():
+    import os
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
+    import frontend_env
+
+    outputs = [{"OutputKey": k, "OutputValue": v} for k, v in {
+        "ApiUrl": "https://abc.lambda-url.us-east-1.on.aws/", "CognitoAuthority": ISSUER,
+        "UserPoolClientId": CLIENT, "CognitoDomain": "https://shredsafe-login-1.auth.us-east-1.amazoncognito.com",
+        "BucketName": "ignored"}.items()]
+    assert frontend_env.env_lines(outputs) == [
+        "VITE_API_URL=https://abc.lambda-url.us-east-1.on.aws", f"VITE_COGNITO_AUTHORITY={ISSUER}",
+        f"VITE_COGNITO_CLIENT_ID={CLIENT}", "VITE_COGNITO_DOMAIN=https://shredsafe-login-1.auth.us-east-1.amazoncognito.com",
+        "VITE_API_MODE=live", "VITE_DEMO_CONTROLS=true"]
+    with pytest.raises(SystemExit, match="CognitoDomain"):
+        frontend_env.env_lines(outputs[:3])
