@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { BrandMark } from '../components/BrandMark'
-import { ACCOUNTS_ARE_PREVIEW, AccountError, NeedsConfirmation, PASSWORD_RULES, accountApi } from '../auth/accountApi'
+import { ACCOUNTS_ARE_PREVIEW, AccountError, NeedsConfirmation, NeedsNewPassword, PASSWORD_RULES, accountApi } from '../auth/accountApi'
 import { useToast } from '../state/toast'
 import { usePageTitle } from '../lib/title'
 import './auth.css'
@@ -242,6 +242,9 @@ export function SignInPage() {
   const [remember, setRemember] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Invited accounts: after the temporary password, Cognito asks for a new one before sign-in completes
+  const [choosing, setChoosing] = useState<string | null>(null)
+  const [newPassword, setNewPassword] = useState('')
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -257,10 +260,51 @@ export function SignInPage() {
         navigate('/signup', { state: { confirmEmail: err.email } })
         return
       }
+      if (err instanceof NeedsNewPassword) {
+        setChoosing(err.message)
+        return
+      }
       setError(message(err))
     } finally {
       setBusy(false)
     }
+  }
+
+  async function saveNewPassword(e: FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await accountApi.completeNewPassword(newPassword)
+      toast('Password saved. You’re signed in.', 'ok')
+      navigate(next, { replace: true })
+    } catch (err) {
+      setError(message(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (choosing) {
+    return (
+      <AuthLayout aside="Every file you clear is checked against your firm's rules and recorded, so you can prove it later.">
+        <h1>Choose your password</h1>
+        <p className="au-sub">{choosing}</p>
+        <form onSubmit={saveNewPassword} noValidate>
+          <Field label="Work email">
+            {(id) => <input id={id} className="au-input" type="email" value={email} readOnly autoComplete="username" />}
+          </Field>
+          <Field label="New password">
+            {(id) => <PasswordInput id={id} value={newPassword} onChange={setNewPassword} autoComplete="new-password" />}
+          </Field>
+          <PasswordRules password={newPassword} />
+          <ErrorLine error={error} />
+          <button type="submit" className="au-submit" disabled={busy}>
+            {busy ? 'Saving…' : 'Save password and sign in'}
+          </button>
+        </form>
+      </AuthLayout>
+    )
   }
 
   return (

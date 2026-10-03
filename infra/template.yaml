@@ -334,6 +334,16 @@ Resources:
           StringAttributeConstraints: { MinLength: "1", MaxLength: "64" }
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: !If [SignUpAllowed, false, true] # AllowSignUp parameter
+        # Sent by Cognito itself (not SES) to people invited from Admin → People or scripts/create_user.py.
+        # Cognito fills in {username} and {####} (the temporary password; both are required in the message).
+        InviteMessageTemplate:
+          EmailSubject: You're invited to ShredSafe
+          EmailMessage: !Sub >-
+            <p>You've been invited to your firm's ShredSafe workspace.</p>
+            <p>Sign in at <a href="${FrontendOrigin}${FrontendBasePath}signin">${FrontendOrigin}${FrontendBasePath}signin</a>
+            with:</p>
+            <p>Email: <b>{username}</b><br>Temporary password: <b>{####}</b></p>
+            <p>You'll choose your own password the first time you sign in. The temporary one expires in 7 days.</p>
       AccountRecoverySetting: # "Forgot password" codes go to the verified email (never SMS; there's no phone)
         RecoveryMechanisms:
           - Name: verified_email
