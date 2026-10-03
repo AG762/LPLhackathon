@@ -168,6 +168,11 @@ a:hover {
   font-size: 1.6rem;
   line-height: 1;
   color: var(--rail-ink);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--rail-ink);
 }
 
 .brand-mark {
