@@ -1,10 +1,12 @@
 import json
 import os
 import hashlib
+from decimal import Decimal
 from urllib.parse import unquote_plus
 from datetime import datetime, timezone
 import boto3
 from classify import classify_text  # Lambda runs from backend/process, so no package prefix
+from rules import evaluate_retention  # copy of backend/shared/rules.py (shared/ isn't deployed)
 
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 s3 = boto3.client("s3", region_name=AWS_REGION)
@@ -29,9 +31,36 @@ def extract_readable_text(file_bytes: bytes, filename: str) -> str:
         pass
     return f"[Binary or unparsed file content for {filename}]"
 
+UNKNOWN_VALUES = {"", "N/A", "NA", "NONE", "NULL", "UNKNOWN"}
+
+
+def _known(value):
+    """Classifier fields come back as "N/A"/null when unknown; the Files contract omits those."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return None if text.upper() in UNKNOWN_VALUES else text
+
+
+def active_holds():
+    """Legal holds as seeded by scripts/seed.py. Read on every event so a new hold applies at once."""
+    name = os.environ.get("HOLDS_TABLE")
+    if not name:
+        return []
+    table, items, kwargs = dynamodb.Table(name), [], {}
+    while True:
+        page = table.scan(**kwargs)
+        items.extend(page.get("Items", []))
+        if "LastEvaluatedKey" not in page:
+            break
+        kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+    return [h for h in items if h.get("active", True)]
+
+
 def process_file_event(event, context):
     table = dynamodb.Table(FILES_TABLE)
     processed_records = []
+    holds = active_holds()
 
     for record in event.get("Records", []):
         bucket_name = record["s3"]["bucket"]["name"]
@@ -67,17 +96,26 @@ def process_file_event(event, context):
                 }
 
         uploaded_at = datetime.now(timezone.utc).isoformat()
-        doc_type = classification.get("doc_type", "UNKNOWN")
-        confidence = float(classification.get("confidence", 0.0))
-        
-        # Recommendation logic according to PLAN.md §6
-        recommendation = "DELETE" if ("DRAFT" in doc_type or "PERSONAL" in doc_type) else "RETAIN"
-        if confidence < 0.75 or doc_type == "UNKNOWN":
-            recommendation = "REVIEW"
-            
+        doc_type = classification.get("doc_type") or "UNKNOWN"
+        confidence = float(classification.get("confidence") or 0.0)
+
         # Keys are uploads/<fileId>/<filename> (see api /upload-url); fall back to the filename
         parts = object_key.split("/")
         file_id = parts[1] if len(parts) == 3 and parts[0] == "uploads" else filename
+
+        known = {
+            "clientName": _known(classification.get("client_name")),
+            "accountId": _known(classification.get("account_id")),
+            "documentDate": _known(classification.get("document_date")),
+        }
+        # B.2: the rules engine decides (hold -> confidence -> non-record -> retention), not the model
+        decision = evaluate_retention(
+            {"docType": doc_type, "confidence": confidence, "fileId": filename, "s3Key": object_key,
+             **{k: v for k, v in known.items() if v}},
+            holds,
+        )
+        classifier_reason = (classification.get("rationale") or "").strip()
+        rationale = decision["rationale"] + (f" Classifier: {classifier_reason}" if classifier_reason else "")
 
         item = {
             "fileId": file_id,
@@ -86,15 +124,19 @@ def process_file_event(event, context):
             "sizeBytes": size_bytes,
             "uploadedAt": uploaded_at,
             "docType": doc_type,
-            "confidence": str(confidence),
-            "clientName": classification.get("client_name") or "N/A",
-            "accountId": classification.get("account_id") or "N/A",
-            "documentDate": classification.get("document_date") or "N/A",
-            "rationale": classification.get("rationale") or "",
-            "recommendation": recommendation,
-            "status": "PENDING"
+            "confidence": Decimal(str(confidence)),
+            "rationale": rationale,
+            "recommendation": decision["recommendation"],
+            "ruleApplied": decision["ruleApplied"],
+            "status": "PENDING",
+            **{k: v for k, v in known.items() if v},
         }
-        
+        if decision.get("keepUntil"):
+            item["keepUntil"] = decision["keepUntil"]
+        pii_types = [str(t) for t in classification.get("pii_detected") or [] if _known(t)]
+        if pii_types:
+            item["piiTypes"] = pii_types  # B.7 scores images Macie can't read from these
+
         try:
             table.put_item(Item=item)
         except Exception as e:
@@ -104,5 +146,5 @@ def process_file_event(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps({"processed": len(processed_records), "items": processed_records})
+        "body": json.dumps({"processed": len(processed_records), "items": processed_records}, default=str)
     }
