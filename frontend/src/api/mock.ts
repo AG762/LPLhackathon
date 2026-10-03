@@ -615,6 +615,7 @@ export const mockApi: Api = {
     await latency()
     if (!scan || Date.now() - scan.startedAt < SCAN_DURATION_MS) throw new ApiError(409, 'The scan is still running.')
     let updated = 0
+    const scannedAt = new Date().toISOString()
     for (const f of files.values()) {
       const fx = pendingFindings.get(f.fileId)
       const findings = fx?.findings ?? {}
@@ -623,6 +624,7 @@ export const mockApi: Api = {
       f.macieFindings = findings
       f.sensitivityScore = score
       f.priority = priority
+      f.scannedAt = scannedAt
       updated++
       if (priority === 'HIGH' && f.recommendation === 'RETAIN' && f.status === 'PENDING' && !f.legalHold) {
         f.status = 'LOCKED'
