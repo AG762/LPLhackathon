@@ -275,6 +275,44 @@ Resources:
           Properties:
             Schedule: rate(5 minutes)
 
+  # Starts the sensitive-data scan once uploads settle, even if nobody keeps the Upload page open (F.25)
+  AutoScanFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/api
+      Handler: autoscan.main
+      Timeout: 120
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref FilesBucket
+          FILES_TABLE: !Ref FilesTable
+          RULES_TABLE: !Ref RetentionRulesTable
+          HOLDS_TABLE: !Ref LegalHoldsTable
+          AUDIT_TABLE: !Ref AuditLogTable
+          ACCOUNT_ID: !Ref AWS::AccountId # Macie CreateClassificationJob needs it
+      Policies:
+        - S3CrudPolicy: { BucketName: !Ref FilesBucket }
+        - DynamoDBCrudPolicy: { TableName: !Ref FilesTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref AuditLogTable }
+        - DynamoDBReadPolicy: { TableName: !Ref RetentionRulesTable }
+        - DynamoDBReadPolicy: { TableName: !Ref LegalHoldsTable }
+        - Statement:
+            - Effect: Allow
+              Action: [s3:PutObjectRetention] # scoring a scan can lock records (D.7), same as the API
+              Resource: !Sub "${FilesBucket.Arn}/records/*"
+            - Effect: Allow
+              Action:
+                - macie2:CreateClassificationJob
+                - macie2:ListClassificationJobs
+                - macie2:ListFindings
+                - macie2:GetFindings
+              Resource: "*"
+      Events:
+        EveryTwoMinutes:
+          Type: Schedule
+          Properties:
+            Schedule: rate(2 minutes)
+
   # ---------- Sign-in (docs/login.md) ----------
 
   UserPool:
