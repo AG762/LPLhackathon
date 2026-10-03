@@ -16,6 +16,18 @@ Parameters:
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: Enables POST /audit/demo/tamper and /restore for rehearsing the tamper demo. The Function URL has no auth, so turn this on only for the demo stack (see samconfig.toml).
+  FrontendBasePath:
+    Type: String
+    Default: /
+    Description: Path the app is served under, e.g. /ports/5173/ in the online VS Code. With FrontendOrigin it forms the sign-in redirect URL, which Cognito matches exactly.
+  AuthRequired:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: When true, every API call needs a Cognito sign-in token (docs/login.md). Off keeps the demo advisor and accepts tokens if sent.
+
+Conditions:
+  FrontendIsLocalhost: !Equals [!Sub "${FrontendOrigin}${FrontendBasePath}", "http://localhost:5173/"]
 
 Globals:
   Function:
@@ -152,6 +164,9 @@ Resources:
           ACCOUNT_ID: !Ref AWS::AccountId # Macie CreateClassificationJob needs it
           QUARANTINE_DAYS: !Ref QuarantineDays
           DEMO_CONTROLS: !Ref DemoControls
+          AUTH_REQUIRED: !Ref AuthRequired
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref WebClient
       Policies:
         - S3CrudPolicy: { BucketName: !Ref FilesBucket }
         - DynamoDBCrudPolicy: { TableName: !Ref FilesTable }
@@ -185,13 +200,79 @@ Resources:
                 - macie2:GetFindings
               Resource: "*"
       FunctionUrlConfig:
-        AuthType: NONE # demo only: no login
+        AuthType: NONE # sign-in is checked in code (backend/api/auth.py), see AuthRequired
         Cors:
           AllowOrigins: [!Ref FrontendOrigin]
           AllowMethods: [GET, POST]
-          AllowHeaders: [content-type]
+          AllowHeaders: [content-type, authorization]
+
+  # ---------- Sign-in (docs/login.md) ----------
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-users"
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true # no self sign-up: compliance creates accounts
+      MfaConfiguration: OPTIONAL
+      EnabledMfas: [SOFTWARE_TOKEN_MFA]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "${AWS::StackName}-${AWS::AccountId}" # sign-in page host prefix, globally unique
+      UserPoolId: !Ref UserPool
+
+  WebClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: web
+      GenerateSecret: false # browser app: authorization code + PKCE, no secret
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, email, profile]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: !If
+        - FrontendIsLocalhost
+        - ["http://localhost:5173/"]
+        - [!Sub "${FrontendOrigin}${FrontendBasePath}", "http://localhost:5173/"]
+      LogoutURLs: !If
+        - FrontendIsLocalhost
+        - ["http://localhost:5173/"]
+        - [!Sub "${FrontendOrigin}${FrontendBasePath}", "http://localhost:5173/"]
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 1
+      TokenValidityUnits: { AccessToken: hours, IdToken: hours, RefreshToken: days }
+
+  AdvisorGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: advisor, UserPoolId: !Ref UserPool, Description: Own files only }
+  ComplianceGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: compliance, UserPoolId: !Ref UserPool, Description: All files; runs Macie scans }
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: admin, UserPoolId: !Ref UserPool, Description: Demo controls and system actions }
 
 Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: Frontend VITE_COGNITO_CLIENT_ID
+    Value: !Ref WebClient
+  CognitoAuthority:
+    Description: Frontend VITE_COGNITO_AUTHORITY (OIDC issuer)
+    Value: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+  CognitoDomain:
+    Description: Frontend VITE_COGNITO_DOMAIN (sign-in and sign-out pages)
+    Value: !Sub "https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
   ApiUrl:
     Description: Put this in the frontend's VITE_API_URL
     Value: !GetAtt ApiFunctionUrl.FunctionUrl

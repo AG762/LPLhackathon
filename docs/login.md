@@ -1,7 +1,27 @@
 # Adding user login
 
-Status: **proposal, not built.** The MVP has no login on purpose (PLAN.md §7: "One hard-coded demo advisor"). This doc
-is the plan for when we add it, and the answer to "how would users log in?" on stage.
+Status: **steps 1–2 built (infra + API), switched off.** `AuthRequired=false` keeps today's behaviour: requests without
+a token act as the demo advisor with every role. Steps 3–4 (frontend sign-in, file ownership) are open; see STATUS.md.
+This doc is also the answer to "how would users log in?" on stage.
+
+### What's built
+
+- `infra/template.yaml`: user pool (email sign-in, admin-created users only, optional TOTP MFA, 12+ char passwords),
+  sign-in domain, `web` app client (code + PKCE, no secret, 1 h tokens), groups `advisor` / `compliance` / `admin`,
+  `Authorization` allowed by CORS, parameters `AuthRequired` and `FrontendBasePath`, outputs `UserPoolId`,
+  `UserPoolClientId`, `CognitoAuthority`, `CognitoDomain`.
+- `backend/api/auth.py` + `handler.dispatch`: every route checks the caller before running. Roles are **ranked**
+  (admin ⊇ compliance ⊇ advisor); a signed-in user in no group gets 403. Route roles are the 4th item in `ROUTES`.
+- Approve, reject, restore and blocked approvals record the signed-in user (`approvedBy`, audit `actor`, ...).
+- `scripts/create_user.py`: create a user and add them to a group.
+- Tests: `backend/tests/test_auth.py` (signature, issuer, expiry, client id, token type, roles, recorded user).
+
+### Not built yet
+
+- **Frontend sign-in (step 3).** Until then nothing sends a token, so leave `AuthRequired=false`.
+- **File ownership.** Signing `x-amz-meta-owner` into the upload URL makes S3 reject any upload that doesn't send that
+  header, which today's frontend doesn't. Add it together with step 3, plus `process` saving `ownerAdvisorId`
+  (Anwesh) and advisors-see-own-files filtering in the API.
 
 ## Today
 

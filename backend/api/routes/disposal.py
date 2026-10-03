@@ -18,7 +18,6 @@ from routes.files import load_file
 
 logger = logging.getLogger(__name__)
 
-DEMO_ADVISOR = "demo-advisor"  # no login in the MVP
 MAX_BULK = 100
 
 
@@ -26,13 +25,13 @@ def _now():
     return datetime.now(timezone.utc)
 
 
-def _check_can_approve(file):
+def _check_can_approve(file, actor):
     if file.get("status") != "PENDING":
         raise HttpError(409, f"File is {file.get('status')}, only PENDING files can be approved")
 
     hold = holds.find_hold(file)
     if hold:
-        audit_log.append(DEMO_ADVISOR, "APPROVAL_BLOCKED", file, "LEGAL_HOLD",
+        audit_log.append(actor, "APPROVAL_BLOCKED", file, "LEGAL_HOLD",
                          detail=f"hold {hold.get('holdId')}: {hold.get('reason', '')}")
         raise HttpError(409, f"Blocked by legal hold {hold.get('holdId')}: {hold.get('reason', '')}".strip())
 
@@ -87,12 +86,12 @@ def _move_object(src, dest):
     s3.delete_object(Bucket=aws.bucket(), Key=src)
 
 
-def _approve(file_id):
+def _approve(file_id, actor):
     file = load_file(file_id)
-    _check_can_approve(file)
+    _check_can_approve(file, actor)
 
     approved_at = _now()
-    _set_status(file_id, "PENDING", "APPROVED", approvedBy=DEMO_ADVISOR, approvedAt=approved_at.isoformat())
+    _set_status(file_id, "PENDING", "APPROVED", approvedBy=actor, approvedAt=approved_at.isoformat())
 
     src, dest = file["s3Key"], _quarantine_key(file["s3Key"])
     try:
@@ -107,14 +106,14 @@ def _approve(file_id):
     purge_after = approved_at + timedelta(days=int(os.environ.get("QUARANTINE_DAYS", "1")))
     updated = _set_status(file_id, "APPROVED", "QUARANTINED", s3Key=dest,
                           quarantinedAt=_now().isoformat(), purgeAfter=purge_after.isoformat())
-    audit_log.append(DEMO_ADVISOR, "APPROVED", updated, file.get("ruleApplied"))
-    audit_log.append(DEMO_ADVISOR, "QUARANTINED", updated, file.get("ruleApplied"),
+    audit_log.append(actor, "APPROVED", updated, file.get("ruleApplied"))
+    audit_log.append(actor, "QUARANTINED", updated, file.get("ruleApplied"),
                      detail=f"{src} -> {dest}, purge after {purge_after.date()}")
     return updated
 
 
 def approve(req):
-    return 200, _approve(req.params["file_id"])
+    return 200, _approve(req.params["file_id"], req.user["id"])
 
 
 def reject(req):
@@ -122,9 +121,9 @@ def reject(req):
     if file.get("status") != "PENDING":
         raise HttpError(409, f"File is {file.get('status')}, only PENDING files can be rejected")
     reason = str(req.body.get("reason", ""))[:500]
-    updated = _set_status(file["fileId"], "PENDING", "REJECTED", rejectedBy=DEMO_ADVISOR,
+    updated = _set_status(file["fileId"], "PENDING", "REJECTED", rejectedBy=req.user["id"],
                           rejectedAt=_now().isoformat(), rejectReason=reason)
-    audit_log.append(DEMO_ADVISOR, "REJECTED", updated, file.get("ruleApplied"), detail=reason or None)
+    audit_log.append(req.user["id"], "REJECTED", updated, file.get("ruleApplied"), detail=reason or None)
     return 200, updated
 
 
@@ -138,7 +137,7 @@ def bulk_approve(req):
     approved, blocked = [], []
     for file_id in dict.fromkeys(ids):  # dedupe, keep order
         try:
-            approved.append(_approve(file_id))
+            approved.append(_approve(file_id, req.user["id"]))
         except HttpError as e:
             blocked.append({"fileId": file_id, "status": e.status, "error": e.message})
     return 200, {"approved": approved, "blocked": blocked}
@@ -165,8 +164,8 @@ def restore(req):
         raise HttpError(502, "Could not move the file out of quarantine; it is still in the grace period")
 
     updated = _set_status(file["fileId"], "QUARANTINED", "PENDING", s3Key=dest,
-                          restoredBy=DEMO_ADVISOR, restoredAt=_now().isoformat())
-    audit_log.append(DEMO_ADVISOR, "RESTORED", updated, file.get("ruleApplied"), detail=f"{src} -> {dest}")
+                          restoredBy=req.user["id"], restoredAt=_now().isoformat())
+    audit_log.append(req.user["id"], "RESTORED", updated, file.get("ruleApplied"), detail=f"{src} -> {dest}")
     return 200, updated
 
 
