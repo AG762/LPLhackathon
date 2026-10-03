@@ -53,6 +53,36 @@ function markIntroSeen() {
   }
 }
 
+// The nav sits clear over the hero, takes a dark glass bar once the page moves on, and a light one over
+// the light sheet at the end, so headings never pass under bare links.
+function useNavTone() {
+  const [tone, setTone] = useState<'clear' | 'dark' | 'light'>('clear')
+  useEffect(() => {
+    let raf = 0
+    const read = () => {
+      raf = 0
+      const hero = document.querySelector<HTMLElement>('.hs, .hs-wait')
+      const paper = document.querySelector<HTMLElement>('.hp-paper')
+      const heroEnd = hero ? hero.offsetTop + hero.offsetHeight - window.innerHeight : 0
+      const next =
+        paper && paper.getBoundingClientRect().top <= 36 ? 'light' : window.scrollY > heroEnd + 24 ? 'dark' : 'clear'
+      setTone((t) => (t === next ? t : next))
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(read)
+    }
+    read()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [])
+  return tone
+}
+
 function useSmoothScroll(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
@@ -65,6 +95,7 @@ export default function HomePage() {
   const { files, loaded, error } = useFiles()
   const reduce = useReducedMotion() ?? false
   useSmoothScroll(!reduce)
+  const navTone = useNavTone()
   // The opening plays once per visit: coming back from the portal goes straight to the lit stage.
   const [intro] = useState(() => !reduce && !introSeen())
   const [ready, setReady] = useState(!intro)
@@ -128,7 +159,7 @@ export default function HomePage() {
       <a className="hp-skip" href="#main">
         Skip to content
       </a>
-      <header className="hp-nav">
+      <header className={`hp-nav is-${navTone}`}>
         <Link className="hp-brand" to="/" aria-label="ShredSafe home">
           <BrandMark />
           ShredSafe
@@ -240,12 +271,42 @@ export default function HomePage() {
           </section>
 
           <footer className="hp-foot">
-            <span className="hp-brand">
-              <BrandMark />
-              ShredSafe
-            </span>
-            <p>Defensible disposal for financial advisors. Built on AWS.</p>
-            <p>Every client name and file shown here is synthetic sample data.</p>
+            <div className="hp-foot-top">
+              <Link className="hp-brand hp-foot-brand" to="/" aria-label="ShredSafe home">
+                <BrandMark />
+                ShredSafe
+              </Link>
+              <nav className="hp-foot-cols" aria-label="Footer">
+                <div>
+                  <h3>Product</h3>
+                  <ul>
+                    <li><a href="#how">How it works</a></li>
+                    <li><a href="#proof">Proof</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                  </ul>
+                </div>
+                <div>
+                  <h3>Portal</h3>
+                  <ul>
+                    <li><Link to="/dashboard">Try it now</Link></li>
+                    <li><Link to="/signin">Sign in</Link></li>
+                    <li><Link to="/signup">Start a pilot</Link></li>
+                  </ul>
+                </div>
+                <div>
+                  <h3>Built on</h3>
+                  <ul className="hp-foot-plain">
+                    <li>Amazon Bedrock</li>
+                    <li>Amazon Macie</li>
+                    <li>S3 Object Lock</li>
+                  </ul>
+                </div>
+              </nav>
+            </div>
+            <div className="hp-foot-base">
+              <p>Defensible disposal for financial advisors. Built on AWS.</p>
+              <p>Every client name and file shown here is synthetic sample data.</p>
+            </div>
           </footer>
         </Paper>
       </main>
