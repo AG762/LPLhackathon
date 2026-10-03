@@ -159,7 +159,7 @@ export default function UploadPage() {
               </span>
             </div>
             {!running && done > 0 && (
-              <Link className="btn btn-primary" to="/">
+              <Link className="btn btn-primary" to="/queue">
                 Go to review queue
               </Link>
             )}

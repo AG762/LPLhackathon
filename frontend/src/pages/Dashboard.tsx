@@ -157,9 +157,9 @@ export default function DashboardPage() {
               />
               <Measure label="Kept longer than required" value={pct(m.overRetainedPct)} note="Share of your files that were past their retention date when found" />
               <Measure
-                label="Decided automatically"
+                label="Recommended automatically"
                 value={`${m.autoCleared} of ${m.autoCleared + m.neededReview}`}
-                note={`${m.neededReview} needed a person to look at them`}
+                note={`${m.neededReview} needed a person to decide`}
               />
               <Measure
                 label="Audit trail"

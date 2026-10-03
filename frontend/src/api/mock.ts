@@ -3,8 +3,20 @@
 // and a real SHA-256 hash chain, so the tamper demo can be rehearsed.
 import type { Api } from './client'
 import { ApiError } from './errors'
-import type { AuditEntry, BulkApproveResult, DashboardMetrics, FileRecord, Priority, Recommendation } from '../types'
-import { DEMO_ADVISOR } from '../lib/format'
+import type {
+  AuditEntry,
+  BulkApproveResult,
+  DashboardMetrics,
+  FileRecord,
+  HoldScope,
+  LegalHold,
+  Member,
+  Priority,
+  Recommendation,
+  RetentionRule,
+  Role,
+} from '../types'
+import { DEMO_ADVISOR, fileName } from '../lib/format'
 import { computeMetrics } from '../lib/metrics'
 
 const CITATIONS: Record<string, string> = {
@@ -251,6 +263,7 @@ function approvalBlocker(f: FileRecord): string | null {
 }
 
 async function approveOne(id: string) {
+  applyHolds()
   const f = mustGet(id)
   const blocker = approvalBlocker(f)
   if (blocker) throw new ApiError(409, blocker)
@@ -313,7 +326,187 @@ async function simulateProcess(fileId: string, name: string, size: number) {
 
 const SCAN_DURATION_MS = 6000
 
+
+// ---------- admin (F.15) ----------
+
+// Copy of config/retention_rules.json, the schedule the live rules engine applies.
+const RULES: RetentionRule[] = [
+  {docType: "TRADE_CONFIRMATION", retentionYears: 6, trigger: "CREATED", action: "RETAIN", citation: "SEC Rule 17a-4 / FINRA Rule 4511", description: "Broker trade confirmations"},
+  {docType: "ACCOUNT_STATEMENT", retentionYears: 6, trigger: "CREATED", action: "RETAIN", citation: "SEC Rule 17a-4", description: "Monthly or quarterly account statements"},
+  {docType: "CLIENT_COMMUNICATION", retentionYears: 3, trigger: "CREATED", action: "RETAIN", citation: "SEC Rule 17a-4(b)(4)", description: "Client emails and letters about recommendations"},
+  {docType: "ADVISORY_AGREEMENT", retentionYears: 6, trigger: "ACCOUNT_CLOSED", action: "RETAIN", citation: "SEC Rule 17a-4 / Advisers Act Rule 204-2", description: "New-account forms and advisory agreements; clock starts when the account closes"},
+  {docType: "MARKETING", retentionYears: 5, trigger: "CREATED", action: "RETAIN", citation: "Advisers Act Rule 204-2", description: "Published advertising and newsletters"},
+  {docType: "DRAFT", retentionYears: 0, trigger: "CREATED", action: "DELETE", citation: "No retention requirement (draft superseded by final)", description: "Working copies with a final version on file"},
+  {docType: "DUPLICATE", retentionYears: 0, trigger: "CREATED", action: "DELETE", citation: "No retention requirement (exact copy of a stored record)", description: "Duplicate copies; the original is kept"},
+  {docType: "PERSONAL", retentionYears: 0, trigger: "CREATED", action: "REVIEW", citation: "No retention requirement (non-business file)", description: "Personal or non-business files; deleted after a person reviews them"},
+  {docType: "EXPIRED_PII", retentionYears: 0, trigger: "CREATED", action: "DELETE", citation: "Regulation S-P disposal rule", description: "Scanned IDs and SSN copies past retention; disposal is recorded"},
+  {docType: "ID_DOCUMENT", retentionYears: 6, trigger: "ACCOUNT_CLOSED", action: "RETAIN", citation: "SEC Rule 17a-4 / Regulation S-P", description: "Customer identification copies kept with the account record"},
+  {docType: "UNKNOWN", retentionYears: 0, trigger: "CREATED", action: "REVIEW", citation: "Low-confidence classification: human review", description: "Anything the classifier could not place"},
+]
+
+const members: Member[] = [
+  { userId: DEMO_ADVISOR.id, email: 'jordan.reyes@branch214.example', name: DEMO_ADVISOR.name, role: 'admin', status: 'ACTIVE', branchId: 'BR-214', lastActiveAt: hoursAgo(0.1) },
+  { userId: 'cmp-2201', email: 'priya.shah@branch214.example', name: 'Priya Shah', role: 'compliance', status: 'ACTIVE', branchId: 'BR-214', lastActiveAt: hoursAgo(3) },
+  { userId: 'adv-1077', email: 'marcus.bell@branch214.example', name: 'Marcus Bell', role: 'advisor', status: 'ACTIVE', branchId: 'BR-214', lastActiveAt: hoursAgo(26) },
+  { userId: 'adv-1103', email: 'elena.ortiz@branch214.example', name: 'Elena Ortiz', role: 'advisor', status: 'INVITED', branchId: 'BR-214', invitedAt: hoursAgo(50) },
+  { userId: 'adv-0954', email: 'tom.becker@branch214.example', name: 'Tom Becker', role: 'advisor', status: 'DISABLED', branchId: 'BR-214', lastActiveAt: hoursAgo(24 * 40) },
+]
+
+const holds: LegalHold[] = [
+  {
+    holdId: 'H-1001', scopeType: 'CLIENT_NAME', scopeValue: 'Margaret Whitaker', active: true,
+    reason: 'Arbitration over 2019 rebalancing advice', createdBy: 'Priya Shah', createdAt: hoursAgo(24 * 21),
+  },
+  {
+    holdId: 'H-0998', scopeType: 'CLIENT_NAME', scopeValue: 'Arthur Smith', active: true,
+    reason: 'Arbitration: options allocation pricing dispute', createdBy: 'Priya Shah', createdAt: hoursAgo(24 * 64),
+  },
+  {
+    holdId: 'H-0950', scopeType: 'ACCOUNT_ID', scopeValue: 'ACCT-55120', active: false,
+    reason: 'Regulatory inquiry on a 2021 transfer', createdBy: 'Priya Shah', createdAt: hoursAgo(24 * 300),
+    releasedBy: 'Priya Shah', releasedAt: hoursAgo(24 * 120), releaseReason: 'Inquiry closed with no action',
+  },
+]
+
+function holdMatches(h: LegalHold, f: FileRecord) {
+  const v = h.scopeValue.trim().toLowerCase()
+  if (!v) return false
+  switch (h.scopeType) {
+    case 'CLIENT_NAME':
+      return (f.clientName ?? '').toLowerCase().includes(v)
+    case 'CLIENT_ID':
+      return (f.clientId ?? '').toLowerCase() === v
+    case 'ACCOUNT_ID':
+      return (f.accountId ?? '').toLowerCase() === v
+    case 'BRANCH_ID':
+      return (f.branchId ?? '').toLowerCase() === v
+    case 'KEYWORD':
+      return fileName(f).toLowerCase().includes(v)
+  }
+}
+
+// Same rule as backend/api/holds.py: any active matching hold blocks deletion. When the last hold on a
+// file is released, a file the rules engine had parked under LEGAL_HOLD_OVERRIDE goes back for review.
+function applyHolds() {
+  for (const f of files.values()) {
+    const hold = holds.find((h) => h.active && holdMatches(h, f))
+    if (hold) {
+      f.legalHold = true
+      f.holdId = hold.holdId
+      f.holdReason = hold.reason
+    } else if (f.legalHold || f.holdId || f.ruleApplied === 'LEGAL_HOLD_OVERRIDE') {
+      f.legalHold = false
+      delete f.holdId
+      delete f.holdReason
+      if (f.ruleApplied === 'LEGAL_HOLD_OVERRIDE' && f.status === 'PENDING') {
+        f.ruleApplied = 'HOLD_RELEASED'
+        f.recommendation = 'REVIEW'
+        f.citation = undefined
+        f.rationale = 'The legal hold on this file was released. It needs a fresh retention decision.'
+      }
+    }
+  }
+}
+
+function withCounts(h: LegalHold): LegalHold {
+  return { ...h, matchedFiles: [...files.values()].filter((f) => holdMatches(h, f)).length }
+}
+
+function mustGetMember(id: string) {
+  const m = members.find((x) => x.userId === id)
+  if (!m) throw new ApiError(404, 'No such user')
+  return m
+}
+
+const activeAdmins = () => members.filter((m) => m.role === 'admin' && m.status !== 'DISABLED').length
+
+const adminApi: Pick<
+  Api,
+  'listMembers' | 'inviteMember' | 'setMemberRole' | 'setMemberEnabled' | 'listHolds' | 'placeHold' | 'releaseHold' | 'listRules'
+> = {
+  async listMembers() {
+    await latency()
+    return clone(members)
+  },
+
+  async inviteMember(email: string, role: Role) {
+    await latency()
+    const clean = email.trim().toLowerCase()
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) throw new ApiError(400, 'Enter a valid email address.')
+    if (members.some((m) => m.email === clean)) throw new ApiError(409, `${clean} already has an account.`)
+    const m: Member = { userId: `usr-${crypto.randomUUID().slice(0, 8)}`, email: clean, role, status: 'INVITED', branchId: 'BR-214', invitedAt: new Date().toISOString() }
+    members.push(m)
+    await appendAudit({ actor: DEMO_ADVISOR.id, action: 'USER_INVITED', ruleApplied: `${clean} as ${role}` })
+    return clone(m)
+  },
+
+  async setMemberRole(userId: string, role: Role) {
+    await latency()
+    const m = mustGetMember(userId)
+    if (m.role === 'admin' && role !== 'admin' && activeAdmins() <= 1) throw new ApiError(409, 'The firm needs at least one admin.')
+    m.role = role
+    await appendAudit({ actor: DEMO_ADVISOR.id, action: 'ROLE_CHANGED', ruleApplied: `${m.email} to ${role}` })
+    return clone(m)
+  },
+
+  async setMemberEnabled(userId: string, enabled: boolean) {
+    await latency()
+    const m = mustGetMember(userId)
+    if (!enabled && m.userId === DEMO_ADVISOR.id) throw new ApiError(409, "You can't disable your own account.")
+    if (!enabled && m.role === 'admin' && activeAdmins() <= 1) throw new ApiError(409, 'The firm needs at least one admin.')
+    m.status = enabled ? (m.lastActiveAt ? 'ACTIVE' : 'INVITED') : 'DISABLED'
+    await appendAudit({ actor: DEMO_ADVISOR.id, action: enabled ? 'USER_ENABLED' : 'USER_DISABLED', ruleApplied: m.email })
+    return clone(m)
+  },
+
+  async listHolds() {
+    await ready
+    await latency()
+    return holds.map(withCounts)
+  },
+
+  async placeHold(input: { scopeType: HoldScope; scopeValue: string; reason: string }) {
+    await ready
+    await latency()
+    if (!input.scopeValue.trim()) throw new ApiError(400, 'Say who or what the hold covers.')
+    if (!input.reason.trim()) throw new ApiError(400, 'Give a reason; it goes on the audit record.')
+    const h: LegalHold = {
+      holdId: `H-${1002 + holds.filter((x) => x.holdId.startsWith('H-1')).length}`,
+      scopeType: input.scopeType,
+      scopeValue: input.scopeValue.trim(),
+      reason: input.reason.trim(),
+      active: true,
+      createdBy: DEMO_ADVISOR.name,
+      createdAt: new Date().toISOString(),
+    }
+    holds.unshift(h)
+    applyHolds()
+    await appendAudit({ actor: DEMO_ADVISOR.id, action: 'HOLD_PLACED', ruleApplied: `${h.holdId}: ${h.scopeType} ${h.scopeValue}` })
+    return withCounts(h)
+  },
+
+  async releaseHold(holdId: string, reason: string) {
+    await ready
+    await latency()
+    const h = holds.find((x) => x.holdId === holdId)
+    if (!h) throw new ApiError(404, 'No such hold')
+    if (!h.active) throw new ApiError(409, 'This hold was already released.')
+    if (!reason.trim()) throw new ApiError(400, 'Give a reason for releasing the hold.')
+    Object.assign(h, { active: false, releasedBy: DEMO_ADVISOR.name, releasedAt: new Date().toISOString(), releaseReason: reason.trim() })
+    applyHolds()
+    await appendAudit({ actor: DEMO_ADVISOR.id, action: 'HOLD_RELEASED', ruleApplied: `${h.holdId}: ${h.scopeType} ${h.scopeValue}` })
+    return withCounts(h)
+  },
+
+  async listRules() {
+    await latency()
+    return clone(RULES)
+  },
+}
+
 export const mockApi: Api = {
+  ...adminApi,
+
   async uploadUrl(filename) {
     await latency()
     const fileId = crypto.randomUUID().replace(/-/g, '')
@@ -333,6 +526,7 @@ export const mockApi: Api = {
   async listFiles(opts = {}) {
     await ready
     await latency()
+    applyHolds()
     let list = [...files.values()]
     if (opts.status) list = list.filter((f) => f.status === opts.status)
     list.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
@@ -342,6 +536,7 @@ export const mockApi: Api = {
   async getFile(id) {
     await ready
     await latency()
+    applyHolds()
     return clone(mustGet(id))
   },
 

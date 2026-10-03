@@ -38,7 +38,8 @@ Run these in the online VS Code workspace (it has AWS credentials). Only Arihant
 5. **Live folder**: keep 4 files aside for the on-stage upload, e.g. `Trade_Confirm_SPY_2026_03.txt`,
    `Q3_Financial_Plan_Proposal_v2_draft.txt`, `Gym_Receipt_2024.txt`, `Email_Delgado_2025_11.eml`.
 6. **Frontend**: `cd frontend && npm run online` (needs PR #8), then open
-   `https://d18wlstpxd4zq5.cloudfront.net/ports/5173/`, choose **Live API**, check the queue loads.
+   `https://d18wlstpxd4zq5.cloudfront.net/ports/5173/` (the home page, F.13), click **Open the portal**, choose **Live API**,
+   check the queue loads, then go back to the home page so the demo opens there.
    `frontend/.env.local` needs `VITE_API_MODE=live` and `VITE_DEMO_CONTROLS=true`.
 
 ## T-10 min: preflight
@@ -54,13 +55,13 @@ Run these in the online VS Code workspace (it has AWS credentials). Only Arihant
 
 | # | Time | Driver does | Presenter says |
 |---|---|---|---|
-| 1 | 0:00–0:30 | Slides: cover, problem | "The average advisor keeps documents for years longer than any rule requires. Every extra SSN is one more liability in a breach. But advisors don't delete anything, because they're afraid of breaking a rule." |
+| 1 | 0:00–0:30 | Home page (`/`): let the shredder run; scroll to "two ways to get records wrong", then click **Try it now** | "The average advisor keeps documents for years longer than any rule requires. Every extra SSN is one more liability in a breach. But advisors don't delete anything, because they're afraid of breaking a rule." |
 | 2 | 0:30–1:00 | Upload page: drag the 4-file live folder in | "An advisor drops in a folder. Each file goes straight to S3, and a Lambda sends it to Amazon Bedrock to classify." |
 | 3 | 1:00–2:00 | Review queue: new rows appear. Open one row. Click **Show sensitive-data results** | "Every file gets a recommendation and the reason: the rule, its citation, the AI's confidence. The AI suggests; the rules engine decides." Then: "Macie counted the SSNs and account numbers in every file. The riskiest files jump to the top: this client list holds 50 SSNs and is past retention. Delete first." |
 | 4 | 2:00–2:45 | Point at the LEGAL HOLD row (Margaret Whitaker's 2019 email). Try **Approve**: it's blocked | "This email is past its 3-year window and looks like clutter. But the client is under a legal hold, so the server refuses to delete it. This is the file that gets firms fined. We caught it." |
 | 5 | 2:45–3:30 | Select all deletable files, **Approve N for deletion**. Open **Grace period** tab | "One click approves the safe deletions. Nothing is gone yet: they wait in a grace period where any file can be restored, then purge for good." |
 | 6 | 3:30–4:15 | Audit log: show **Integrity check passed**. Click **Simulate tampering**: it fails at one entry. **Restore original entry**. **Download certificate of disposal** | "Every action is in a hash-chained log. If anyone edits an entry, the check fails at exactly that entry, and the certificate is blocked. Restore it, and here's the certificate an examiner can check." |
-| 7 | 4:15–5:00 | Slides: impact, AWS, close | "Across LPL's 32,000 advisors, that's breach exposure removed and an exam-ready trail. Deleting is risky. Keeping everything is riskier. We make deletion defensible." |
+| 7 | 4:15–5:00 | Click the ShredSafe logo to return home; scroll to "What it found in this demo" and pricing | "Across LPL's 32,000 advisors, that's breach exposure removed and an exam-ready trail. Deleting is risky. Keeping everything is riskier. We make deletion defensible." |
 
 ## If something breaks
 

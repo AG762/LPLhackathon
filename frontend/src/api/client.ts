@@ -4,6 +4,11 @@ import type {
   DashboardMetrics,
   FileRecord,
   FileStatus,
+  HoldScope,
+  LegalHold,
+  Member,
+  RetentionRule,
+  Role,
   ScanStatus,
   UploadUrlResponse,
   VerifyResult,
@@ -29,6 +34,15 @@ export interface Api {
   audit(): Promise<AuditEntry[]>
   verifyAudit(): Promise<VerifyResult>
   certificate(): Promise<Blob>
+  // Admin (F.15). Proposed routes; see listMembers etc. in liveApi.
+  listMembers(): Promise<Member[]>
+  inviteMember(email: string, role: Role): Promise<Member>
+  setMemberRole(userId: string, role: Role): Promise<Member>
+  setMemberEnabled(userId: string, enabled: boolean): Promise<Member>
+  listHolds(): Promise<LegalHold[]>
+  placeHold(hold: { scopeType: HoldScope; scopeValue: string; reason: string }): Promise<LegalHold>
+  releaseHold(holdId: string, reason: string): Promise<LegalHold>
+  listRules(): Promise<RetentionRule[]>
   // Demo-only controls (E.3, D.4). Undefined when the backend doesn't expose them.
   purge?(id: string): Promise<FileRecord>
   tamper?(): Promise<void>
@@ -59,7 +73,7 @@ export function setMode(mode: ApiMode) {
   window.location.reload()
 }
 
-// Sign-in (docs/login.md): AuthBridge in App.tsx registers how to get the access token and what to do on a 401.
+// Sign-in (docs/login.md): SessionProvider (auth/session.tsx) registers how to get the ID token and what to do on a 401.
 // Without sign-in configured both stay no-ops and requests go out without a token, as before.
 type TokenGetter = () => Promise<string | undefined> | string | undefined
 let getToken: TokenGetter = () => undefined
@@ -78,6 +92,18 @@ async function authHeaders(): Promise<Record<string, string>> {
     token = undefined // no session: the API answers 401 if it needs one
   }
   return token ? { authorization: `Bearer ${token}` } : {}
+}
+
+// Admin routes aren't on the backend yet; a 404 there means "not built", not "no such user".
+async function adminRequest<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  try {
+    return await request<T>(method, path, body)
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 501)) {
+      throw new ApiError(501, `Not built on the backend yet (${method} ${path})`)
+    }
+    throw e
+  }
 }
 
 async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
@@ -153,6 +179,14 @@ const liveApi: Api = {
   dashboard: () => request('GET', '/dashboard'),
   audit: () => request('GET', '/audit'),
   verifyAudit: () => request('GET', '/audit/verify'),
+  listMembers: () => adminRequest('GET', '/admin/users'),
+  inviteMember: (email, role) => adminRequest('POST', '/admin/users', { email, role }),
+  setMemberRole: (id, role) => adminRequest('POST', `/admin/users/${encodeURIComponent(id)}/role`, { role }),
+  setMemberEnabled: (id, enabled) => adminRequest('POST', `/admin/users/${encodeURIComponent(id)}/${enabled ? 'enable' : 'disable'}`),
+  listHolds: () => adminRequest('GET', '/holds'),
+  placeHold: (hold) => adminRequest('POST', '/holds', hold),
+  releaseHold: (id, reason) => adminRequest('POST', `/holds/${encodeURIComponent(id)}/release`, { reason }),
+  listRules: () => adminRequest('GET', '/rules'),
   // Demo-only routes; the backend returns 404 unless DEMO_CONTROLS=true on the stack.
   tamper: async () => {
     await request('POST', '/audit/demo/tamper')
