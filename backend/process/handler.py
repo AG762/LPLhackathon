@@ -113,11 +113,14 @@ def process_file_event(event, context):
             "accountId": _known(classification.get("account_id")),
             "documentDate": _known(classification.get("document_date")),
         }
+        # A hold only covers its own workspace's files (docs/login.md); demo holds have none, like demo uploads
+        workspace = (resp.get("Metadata") or {}).get("workspace")
+        workspace_holds = [h for h in holds if h.get("workspaceId") == workspace]
         # B.2: the rules engine decides (hold -> confidence -> non-record -> retention), not the model
         decision = evaluate_retention(
             {"docType": doc_type, "confidence": confidence, "fileId": filename, "s3Key": object_key,
              **{k: v for k, v in known.items() if v}},
-            holds,
+            workspace_holds,
         )
         classifier_reason = (classification.get("rationale") or "").strip()
         rationale = decision["rationale"] + (f" Classifier: {classifier_reason}" if classifier_reason else "")
@@ -141,6 +144,11 @@ def process_file_event(event, context):
         pii_types = [str(t) for t in classification.get("pii_detected") or [] if _known(t)]
         if pii_types:
             item["piiTypes"] = pii_types  # B.7 scores images Macie can't read from these
+        meta = resp.get("Metadata") or {}  # signed into the upload URL by the API for signed-in users (docs/login.md)
+        if meta.get("owner"):
+            item["ownerAdvisorId"] = meta["owner"]
+        if meta.get("workspace"):
+            item["workspaceId"] = meta["workspace"]  # who can see the file: everyone in this workspace
 
         try:
             table.put_item(Item=item)

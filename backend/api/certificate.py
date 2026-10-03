@@ -44,17 +44,18 @@ def _in_range(stamp, date_from, date_to):
     return bool(day) and (not date_from or day >= date_from) and (not date_to or day <= date_to)
 
 
-def disposed_files(date_from=None, date_to=None):
-    files = [f for f in _scan(aws.table("FILES_TABLE")) if f.get("status") in DISPOSED]
+def disposed_files(date_from=None, date_to=None, user=None):
+    from routes.files import visible_to  # only the caller's files on a signed-in certificate
+    files = [f for f in _scan(aws.table("FILES_TABLE")) if f.get("status") in DISPOSED and visible_to(user, f)]
     files = [f for f in files if _in_range(f.get("approvedAt"), date_from, date_to)]
     return sorted(files, key=lambda f: f.get("approvedAt", ""))
 
 
-def build(date_from=None, date_to=None, now=None):
+def build(date_from=None, date_to=None, now=None, user=None):
     now = now or datetime.now(timezone.utc)
     entries = audit_log.list_entries()
     head = entries[-1]["entryHash"] if entries else audit_log.GENESIS
-    files = disposed_files(date_from, date_to)
+    files = disposed_files(date_from, date_to, user)
 
     period = f"{date_from or 'the start of the log'} to {date_to or now.date().isoformat()}"
     lines = [

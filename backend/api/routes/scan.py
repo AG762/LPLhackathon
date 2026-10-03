@@ -19,6 +19,7 @@ import holds
 import sensitivity
 from http_utils import HttpError
 from routes import records
+from routes.files import visible_to
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,8 @@ def ingest(req):
     active_holds = holds.active_holds()
     scanned_at = datetime.now(timezone.utc).isoformat()
 
-    updated, locked, lock_errors = 0, 0, []
+    # The scan covers the whole bucket, but each advisor only hears about their own files
+    updated, locked, lock_errors, with_findings = 0, 0, [], 0
     for file in _all_files():
         if file.get("status") in SKIP_STATUSES:
             continue
@@ -154,6 +156,7 @@ def ingest(req):
             continue
         findings = by_key.get(file.get("s3Key"), {})
         score, priority, source = sensitivity.score_file({**file, "macieFindings": findings})
+        mine = visible_to(req.user, file)
         file = table.update_item(
             Key={"fileId": file["fileId"]},
             UpdateExpression="SET macieFindings = :f, sensitivityScore = :s, priority = :p, "
@@ -162,13 +165,15 @@ def ingest(req):
                                        ":j": job_id, ":t": scanned_at},
             ReturnValues="ALL_NEW",
         )["Attributes"]
-        updated += 1
+        updated += mine
+        with_findings += mine and bool(findings)
         try:
             if records.lock_if_needed(file, active_holds):
-                locked += 1
+                locked += mine
         except HttpError as e:
             logger.warning("Lock after scan failed for %s: %s", file["fileId"], e.message)
-            lock_errors.append({"fileId": file["fileId"], "error": e.message})
+            if mine:
+                lock_errors.append({"fileId": file["fileId"], "error": e.message})
 
     return 200, {"jobId": job_id, "updated": updated, "locked": locked, "lockErrors": lock_errors,
-                 "filesWithFindings": sum(1 for v in by_key.values() if v)}
+                 "filesWithFindings": with_findings}

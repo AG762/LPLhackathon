@@ -19,6 +19,8 @@ class Request:
     query: dict = field(default_factory=dict)
     body: dict = field(default_factory=dict)
     params: dict = field(default_factory=dict)  # filled from path patterns, e.g. {"file_id": ...}
+    headers: dict = field(default_factory=dict)  # Function URLs send header names in lower case
+    user: dict | None = None  # set by handler.dispatch from auth.current_user: {"id", "groups"}
 
     @classmethod
     def from_event(cls, event):
@@ -34,6 +36,7 @@ class Request:
             path=event.get("rawPath", "/"),
             query=event.get("queryStringParameters") or {},
             body=body,
+            headers={k.lower(): v for k, v in (event.get("headers") or {}).items()},
         )
 
 

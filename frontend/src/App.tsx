@@ -1,6 +1,10 @@
 import { Link, NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { mode, setMode, type ApiMode } from './api/client'
 import { DEMO_ADVISOR } from './lib/format'
+import { signInEnabled } from './auth/config'
+import { RequireSignIn } from './auth/RequireSignIn'
+import { useOptionalSession } from './auth/session'
+import { SignedInUser } from './auth/SignedInUser'
 import { FilesProvider, useFiles } from './state/files'
 import { ToastProvider } from './state/toast'
 import QueuePage from './pages/Queue'
@@ -14,6 +18,9 @@ import { BrandMark } from './components/BrandMark'
 
 function Sidebar() {
   const { files } = useFiles()
+  const auth = useOptionalSession()
+  const role = auth?.session.status === 'signedIn' ? auth.session.role : null
+  const showAdmin = !signInEnabled || role === 'admin' || role === 'compliance' || role === 'platform'
   const toReview = files.filter((f) => f.status === 'PENDING').length
 
   const choose = (next: ApiMode) => {
@@ -35,13 +42,17 @@ function Sidebar() {
         <NavLink to="/dashboard">Dashboard</NavLink>
         <NavLink to="/audit">Audit log</NavLink>
         {/* Admins and compliance only once sign-in is on; the demo advisor is the firm's admin. */}
-        <NavLink to="/admin">Admin</NavLink>
+        {showAdmin && <NavLink to="/admin">Admin</NavLink>}
       </nav>
       <div className="sidebar-foot">
-        <div className="advisor">
-          <div className="advisor-name">{DEMO_ADVISOR.name}</div>
-          <div className="muted">{DEMO_ADVISOR.branch}</div>
-        </div>
+        {signInEnabled ? (
+          <SignedInUser />
+        ) : (
+          <div className="advisor">
+            <div className="advisor-name">{DEMO_ADVISOR.name}</div>
+            <div className="muted">{DEMO_ADVISOR.branch}</div>
+          </div>
+        )}
         <div>
           <div className="muted mode-label" id="mode-label" style={{ marginBottom: 6 }}>
             Workspace data
@@ -84,7 +95,13 @@ export default function App() {
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot" element={<ForgotPasswordPage />} />
-          <Route element={<Portal />}>
+          <Route
+            element={
+              <RequireSignIn>
+                <Portal />
+              </RequireSignIn>
+            }
+          >
             <Route path="/queue" element={<QueuePage />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />

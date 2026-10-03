@@ -4,10 +4,17 @@ import os
 import audit_log
 import certificate as certificate_doc
 from http_utils import Binary, HttpError
+from routes.files import visible_file_ids
 
 
 def list_entries(req):
-    return 200, audit_log.list_entries()
+    entries = audit_log.list_entries()
+    if req.user and req.user.get("signedIn"):
+        # An advisor sees entries about their own files and actions they took, nobody else's.
+        # /audit/verify still checks the whole chain but only answers ok / broken-at.
+        mine = visible_file_ids(req.user)
+        entries = [e for e in entries if e.get("fileId") in mine or e.get("actor") == req.user["id"]]
+    return 200, entries
 
 
 def _require_demo_controls(req):
@@ -42,5 +49,5 @@ def certificate(req):
         # A certificate vouches for the log, so it can't be issued while the log fails its check.
         raise HttpError(409, f"Integrity check failed at audit entry {check['brokenAtSeq']}. "
                              "The certificate can't be issued until the check passes.")
-    content = certificate_doc.build(req.query.get("from"), req.query.get("to"))
+    content = certificate_doc.build(req.query.get("from"), req.query.get("to"), user=req.user)
     return 200, Binary(content, "application/pdf", "certificate-of-disposal.pdf")

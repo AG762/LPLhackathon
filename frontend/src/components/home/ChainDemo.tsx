@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { api } from '../../api/client'
+import { signInEnabled } from '../../auth/config'
+import { useOptionalSession } from '../../auth/session'
 import type { AuditEntry } from '../../types'
 import { shortHash } from '../../lib/format'
 import { Rise } from './Motion'
@@ -42,8 +44,13 @@ export default function ChainDemo() {
   const [blocks, setBlocks] = useState<Block[]>(SAMPLE)
   const [real, setReal] = useState(false)
   const [tampered, setTampered] = useState(false)
+  // With sign-in on, real entries only for a signed-in visitor (their own, per the API); the public home
+  // page must not show other advisors' emails. Everyone else sees the samples.
+  const auth = useOptionalSession()
+  const mayLoad = !signInEnabled || auth?.session.status === 'signedIn'
 
   useEffect(() => {
+    if (!mayLoad) return
     let alive = true
     api
       .audit()
@@ -67,7 +74,7 @@ export default function ChainDemo() {
     return () => {
       alive = false
     }
-  }, [])
+  }, [mayLoad])
 
   const target = 2
   const shown = blocks.map((b, i) =>

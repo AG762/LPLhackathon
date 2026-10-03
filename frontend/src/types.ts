@@ -52,6 +52,8 @@ export interface UploadUrlResponse {
   fileId: string
   key?: string
   url: string
+  // Headers the upload must send as-is (signed into the URL), e.g. x-amz-meta-owner when signed in
+  headers?: Record<string, string>
 }
 
 // POST /files/bulk-approve: each id is approved or reported back with the guard that blocked it.

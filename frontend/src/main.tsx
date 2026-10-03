@@ -12,6 +12,8 @@ import '@fontsource/barlow-condensed/800.css'
 import '@fontsource-variable/geist'
 import './index.css'
 import App from './App'
+import { signInEnabled } from './auth/config'
+import { SessionProvider } from './auth/session'
 
 // Behind the online VS Code proxy the app lives under /ports/5173 (`npm run online` sets this).
 // Unset for `npm run dev`, so the app keeps running at the root.
@@ -21,7 +23,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter basename={routerBase}>
       <MotionConfig reducedMotion="user">
-        <App />
+        {signInEnabled ? (
+          <SessionProvider>
+            <App />
+          </SessionProvider>
+        ) : (
+          <App />
+        )}
       </MotionConfig>
     </BrowserRouter>
   </StrictMode>,

@@ -6,6 +6,7 @@ so the page reads the same whichever one it shows. Percentages are fractions (0.
 import audit_log
 import aws
 import holds
+from routes.files import visible_to
 
 REMOVED = {"QUARANTINED", "PURGED"}
 
@@ -57,4 +58,5 @@ def compute(files, active_holds, chain):
 
 
 def get(req):
-    return 200, compute(_all_files(), holds.active_holds(), audit_log.verify_chain())
+    files = [f for f in _all_files() if visible_to(req.user, f)]  # an advisor's dashboard covers their files
+    return 200, compute(files, holds.active_holds(), audit_log.verify_chain())

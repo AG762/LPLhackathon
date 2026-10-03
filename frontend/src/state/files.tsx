@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../api/client'
+import { signInEnabled } from '../auth/config'
+import { useOptionalSession } from '../auth/session'
 import type { FileRecord } from '../types'
 
 const POLL_MS = 3000
@@ -16,6 +18,10 @@ const FilesContext = createContext<FilesState | null>(null)
 
 // Polls /files so uploads "stream in" without a refresh (F.6). Shared so the nav count and queue agree.
 export function FilesProvider({ children }: { children: ReactNode }) {
+  // With sign-in on, only fetch once someone is signed in: the public home page must never show another
+  // advisor's file names. Signed out it gets an empty list and uses its sample names.
+  const auth = useOptionalSession()
+  const allowed = !signInEnabled || auth?.session.status === 'signedIn'
   const [files, setFiles] = useState<FileRecord[]>([])
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,13 +47,18 @@ export function FilesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (!allowed) {
+      setFiles([]) // signed out (or signed out just now): drop the previous advisor's files
+      setLoaded(true)
+      return
+    }
     void refresh()
     const tick = () => {
       if (document.visibilityState === 'visible') void refresh()
     }
     const id = window.setInterval(tick, POLL_MS)
     return () => window.clearInterval(id)
-  }, [refresh])
+  }, [refresh, allowed])
 
   return <FilesContext.Provider value={{ files, loaded, error, refresh, upsert }}>{children}</FilesContext.Provider>
 }

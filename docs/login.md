@@ -1,7 +1,49 @@
 # Adding user login
 
-Status: **proposal, not built.** The MVP has no login on purpose (PLAN.md §7: "One hard-coded demo advisor"). This doc
-is the plan for when we add it, and the answer to "how would users log in?" on stage.
+Status: **built, switched off.** `AuthRequired=false` keeps today's behaviour: requests without a token act as the
+demo advisor with every role, and the frontend only shows sign-in when the Cognito settings are configured.
+This doc is also the answer to "how would users log in?" on stage.
+
+### What's built
+
+- `infra/template.yaml`: user pool (email sign-in, admin-created users only, optional TOTP MFA, 12+ char passwords),
+  sign-in domain, `web` app client (code + PKCE, no secret, 1 h tokens), groups `advisor` / `compliance` / `admin`,
+  `ALLOW_USER_SRP_AUTH` + refresh for the app's own forms, `PreventUserExistenceErrors`, `Authorization` allowed by CORS, parameters `AuthRequired` and `FrontendBasePath`, outputs `UserPoolId`,
+  `UserPoolClientId`, `CognitoAuthority`, `CognitoDomain`.
+- `backend/api/auth.py` + `handler.dispatch`: every route checks the caller before running. The API takes the Cognito
+  **ID token** (it carries the email; with email sign-in the access token's username is a random id), checked for
+  signature, issuer, audience (our app client), expiry and `token_use`. Roles are **ranked**
+  (admin ⊇ compliance ⊇ advisor); a signed-in user in no group gets 403. Route roles are the 4th item in `ROUTES`.
+- Approve, reject, restore and blocked approvals record the signed-in user's email (`approvedBy`, audit `actor`, ...).
+- **Ownership:** for signed-in users `/upload-url` signs `x-amz-meta-owner` into the upload URL and returns it in
+  `headers`; the frontend sends it; `process` saves it as `ownerAdvisorId`. Advisors only see and act on their own
+  files (others' files are 404) whatever their role; dashboard, audit list, certificate and scan results cover only
+  their files. `/audit/verify` still checks the whole chain but only answers ok / broken-at.
+  Uploads without sign-in carry no owner, so the demo and older frontends work unchanged.
+- Frontend: Aryan's pages at `/signin`, `/signup`, `/forgot` (`src/pages/Auth.tsx`) call `src/auth/accountApi.ts`,
+  which uses Amazon Cognito through Amplify Auth (SRP) when `VITE_COGNITO_USER_POOL_ID` and `VITE_COGNITO_CLIENT_ID`
+  are set in Live mode, and pretends otherwise (Sample mode). `RequireSignIn` guards the portal routes (`/queue`,
+  `/upload`, `/dashboard`, `/audit`, `/admin`) and returns you to the page you wanted; the home page and the sign-in
+  pages stay public and, while signed out, make no API calls (no other advisor's file names or audit entries).
+  The ID token goes on every API call (refreshed automatically); "Keep me signed in" picks persistent or tab-only
+  token storage; the sidebar shows the name or email, role and **Sign out**. Sign-up stores `name` and `custom:firm`.
+  Not handled on these pages yet: the new-password step for invited accounts and authenticator (MFA) codes; the
+  page explains instead.
+- **Self sign-up** (`AllowSignUp`, default on): any independent advisor can create an account from the sign-in page and
+  confirms their email with a code. `backend/signup/` (post-confirmation trigger) adds every new account to `advisor`,
+  so it can use the app straight away; per-advisor visibility means it starts with an empty queue.
+  `AllowSignUp=false` makes a stack invite-only.
+- Scripts: `create_user.py` (accounts, `--password` for test accounts), `frontend_env.py` (frontend settings from a stack).
+- Tests: `backend/tests/test_auth.py`.
+
+### Not built yet
+
+- The Audit page labels the last entry *it shows* as the chain head; for a filtered (per-advisor) list that's the
+  advisor's latest entry, not the true head. Cosmetic; the integrity check itself uses the whole chain.
+- Files uploaded before sign-in have no owner, so no signed-in user sees them.
+- **Open sign-up limits before real use:** Cognito's built-in email sender allows about 50 emails a day (sign-up codes,
+  password resets); production needs Amazon SES. Anyone can sign up and upload, so add per-account upload quotas
+  and bot protection (e.g. Cognito threat protection or a CAPTCHA) before opening it to the public.
 
 ## Today
 
@@ -38,15 +80,33 @@ Browser ──(1) redirect──► Cognito managed login page (email + password
 | Function URL `AuthType: AWS_IAM` + Cognito Identity Pool | Browser must SigV4-sign every request; much more frontend work |
 | A shared demo password | Gives no per-person identity, so the audit trail still can't say who approved |
 
-## Roles and rules
+## Workspaces, roles and rules
+
+**People in the same workspace see the same data; nobody sees another workspace's.** A workspace is a firm,
+or one independent advisor on their own.
+
+- **Signing up creates a new, empty workspace**, and its creator becomes its `admin` (`backend/signup/`).
+- **Others join an existing workspace** by being added to it: `scripts/create_user.py --workspace ws-...` today,
+  the admin panel's invites once its routes exist (docs/admin-api.md). Signing up never joins someone else's.
+- The workspace lives on the Cognito account (`custom:workspace`) and arrives in the ID token. **Users can't
+  change it**: the web app client's `WriteAttributes` leave it out. Accounts without one act as a workspace of
+  their own (`user:<sub>`).
+- **Files** carry `workspaceId` (signed into the upload URL with the uploader, so it can't be forged) and
+  `ownerAdvisorId` (who uploaded). The Queue, file actions, dashboard, audit list, certificate and scan results
+  cover the caller's workspace. Another workspace's file is a 404.
+- **Legal holds** carry `workspaceId` and only cover that workspace's files, in the API and in `process`, so
+  one firm's hold never blocks or reveals anything in another. Holds without one (the seeded demo holds) cover
+  uploads made without sign-in; `scripts/seed.py --workspace ws-...` gives the demo holds to a workspace.
 
 | Role (Cognito group) | Can |
 |---|---|
-| `advisor` | Upload; see and act on **their own** files; approve/reject/restore; see their dashboard and audit entries |
-| `compliance` | Everything an advisor can, for **all** files; manage legal holds (future UI); run Macie scans |
-| `admin` | Demo controls (`/audit/demo/*`), `purge-expired`, `lock-sensitive` |
+| `advisor` | Everything on their workspace's files: upload, review, approve/reject/restore, scan, dashboard, audit, certificate |
+| `compliance` | Same data as everyone in the workspace (reserved for compliance-only features) |
+| `admin` | Runs their workspace (the person who signed up; the admin panel is for them) |
+| `platform` | The ShredSafe operator: system-wide routes that act across all workspaces (demo controls, `purge-expired`, `lock-sensitive`). Never given to a workspace |
 
-The disposal guards don't change: a held or still-retained file is refused for **every** role, including admin.
+The disposal guards don't change: a held or still-retained file is refused for **every** role.
+Without sign-in (`AuthRequired=false`, no token) the demo user still sees everything, as before.
 
 ## Implementation steps
 
@@ -59,7 +119,7 @@ The disposal guards don't change: a held or still-retained file is refused for *
       UserPoolName: !Sub "${AWS::StackName}-users"
       UsernameAttributes: [email]
       AutoVerifiedAttributes: [email]
-      AdminCreateUserConfig: { AllowAdminCreateUserOnly: true }   # no self sign-up
+      AdminCreateUserConfig: { AllowAdminCreateUserOnly: false }  # self sign-up (AllowSignUp parameter)
       MfaConfiguration: OPTIONAL
       EnabledMfas: [SOFTWARE_TOKEN_MFA]
       Policies:

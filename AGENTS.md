@@ -9,6 +9,7 @@ Product and plan: [PLAN.md](PLAN.md). Work breakdown: [STORIES.md](STORIES.md). 
 |---|---|---|
 | `backend/api/` | HTTP API (router in `handler.py`, routes in `routes/`) | Lambda `ApiFunction`, handler `handler.main`, behind a Function URL |
 | `backend/process/` | Classifies each upload (Bedrock) and writes the `Files` row | Lambda `ProcessFunction`, handler `handler.process_file_event`, triggered by S3 `uploads/` |
+| `backend/signup/` | Cognito post-confirmation trigger: new self-signed-up users join `advisor` | Lambda `SignUpFunction`, handler `handler.main` |
 | `backend/shared/` | Rules engine (`rules.py`) | **Not deployed.** Neither Lambda's code folder includes it |
 | `backend/tests/` | pytest suite (moto fakes S3/DynamoDB) | n/a |
 | `infra/` | SAM template + `samconfig.toml` (stack `shredsafe`, `us-east-1`) | `sam build && sam deploy` |
@@ -71,7 +72,8 @@ Change these only with the owners' agreement (see STATUS.md), and update every s
   `recommendation` (`DELETE|RETAIN|REVIEW`), `keepUntil` (`YYYY-MM-DD`), `ruleApplied`, `rationale`, `docType`,
   `sha256`, `sizeBytes`, `uploadedAt`, and when known `clientName` / `clientId` / `accountId` / `branchId`.
   **Omit** unknown fields; don't write `"N/A"` (the UI shows it literally).
-- **`LegalHolds` item:** `{holdId, scopeType, scopeValue, reason, active}`, `scopeType` one of
+- **Workspaces:** files carry `workspaceId` (and `ownerAdvisorId`); signed-in users see only their workspace's files (`routes/files.visible_to`). Any new route that returns or changes files, holds or audit data must filter through it. See docs/login.md.
+- **`LegalHolds` item:** `{holdId, scopeType, scopeValue, reason, active, workspaceId?}` (a hold only covers its own workspace's files), `scopeType` one of
   `CLIENT_NAME` (case-insensitive substring of `clientName`; use the full name), `CLIENT_ID`, `ACCOUNT_ID`, `BRANCH_ID`, `KEYWORD`.
   Matching lives in `backend/api/holds.py`. The approve guard and `GET /files` (`legalHold`, `holdId`, `holdReason`) both use it.
 - **Approve guard:** the API refuses (409) files that are held, `RETAIN`, within `keepUntil`, or not `PENDING`.

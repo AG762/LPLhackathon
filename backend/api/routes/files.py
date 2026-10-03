@@ -20,12 +20,18 @@ def upload_url(req):
     # The `process` Lambda parses fileId out of this key: uploads/<fileId>/<filename>.
     # It creates the Files row on the S3 event, so nothing is written here.
     key = f"uploads/{file_id}/{filename}"
-    url = aws.s3().generate_presigned_url(
-        "put_object",
-        Params={"Bucket": aws.bucket(), "Key": key},
-        ExpiresIn=UPLOAD_URL_TTL_SECONDS,
-    )
-    return 200, {"fileId": file_id, "key": key, "url": url}
+    params = {"Bucket": aws.bucket(), "Key": key}
+    headers = {}
+    if req.user and req.user.get("signedIn"):
+        # Uploader and workspace are signed into the URL, so S3 rejects the upload unless the browser sends
+        # exactly these headers: nobody can upload as someone else or into another workspace. `process`
+        # copies them to ownerAdvisorId and workspaceId. Only for signed-in users, so uploads without
+        # sign-in (the demo) work as before.
+        meta = {"owner": req.user["id"], "workspace": req.user["workspace"]}
+        params["Metadata"] = meta
+        headers.update({f"x-amz-meta-{k}": v for k, v in meta.items()})
+    url = aws.s3().generate_presigned_url("put_object", Params=params, ExpiresIn=UPLOAD_URL_TTL_SECONDS)
+    return 200, {"fileId": file_id, "key": key, "url": url, "headers": headers}
 
 
 def list_files(req):
@@ -39,6 +45,7 @@ def list_files(req):
             break
         kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
 
+    items = [f for f in items if visible_to(req.user, f)]
     status = req.query.get("status")
     if status:
         items = [f for f in items if f.get("status") == status]
@@ -57,9 +64,33 @@ def list_files(req):
     return 200, items
 
 
-def load_file(file_id):
+def visible_to(user, file):
+    """People in the same workspace see the same files, whatever their role; nobody sees another
+    workspace's. No user (internal call) or not signed in (the demo, AuthRequired off) sees everything."""
+    if user is None or not user.get("signedIn"):
+        return True
+    return file.get("workspaceId") == user["workspace"]
+
+
+def all_files():
+    table = aws.table("FILES_TABLE")
+    items, kwargs = [], {}
+    while True:
+        page = table.scan(**kwargs)
+        items.extend(page.get("Items", []))
+        if "LastEvaluatedKey" not in page:
+            return items
+        kwargs["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+
+
+def visible_file_ids(user):
+    return {f["fileId"] for f in all_files() if visible_to(user, f)}
+
+
+def load_file(file_id, user=None):
     item = aws.table("FILES_TABLE").get_item(Key={"fileId": file_id}).get("Item")
-    if not item:
+    # Someone else's file is a 404, not a 403, so file ids can't be probed
+    if not item or not visible_to(user, item):
         raise HttpError(404, "File not found")
     return item
 
@@ -76,4 +107,4 @@ def _flag_hold(item, active_holds):
 
 
 def get_file(req):
-    return 200, _flag_hold(load_file(req.params["file_id"]), holds.active_holds())
+    return 200, _flag_hold(load_file(req.params["file_id"], req.user), holds.active_holds())

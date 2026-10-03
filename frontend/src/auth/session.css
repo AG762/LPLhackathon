@@ -1,0 +1,60 @@
+/* ---------- signed-in block in the sidebar ---------- */
+
+.session {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.12);
+  color: var(--rail-ink);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.session-email {
+  display: block;
+  overflow: hidden;
+  color: var(--rail-ink);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-role {
+  display: block;
+  color: var(--rail-ink-2);
+  font-size: 0.82rem;
+  text-transform: capitalize;
+}
+
+.session-signout {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rail-ink-2);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.session-signout:hover {
+  color: var(--rail-ink);
+}
+
+.session-signout:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

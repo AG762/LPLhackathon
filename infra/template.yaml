@@ -16,6 +16,24 @@ Parameters:
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: Enables POST /audit/demo/tamper and /restore for rehearsing the tamper demo. The Function URL has no auth, so turn this on only for the demo stack (see samconfig.toml).
+  FrontendBasePath:
+    Type: String
+    Default: /
+    Description: Path the app is served under, e.g. /ports/5173/ in the online VS Code. With FrontendOrigin it forms the sign-in redirect URL, which Cognito matches exactly.
+  AuthRequired:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: When true, every API call needs a Cognito sign-in token (docs/login.md). Off keeps the demo advisor and accepts tokens if sent.
+  AllowSignUp:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Anyone can create an account on the sign-in page (independent advisors). New accounts become advisors and see only their own files. false = invite-only (scripts/create_user.py).
+
+Conditions:
+  SignUpAllowed: !Equals [!Ref AllowSignUp, "true"]
+  FrontendIsLocalhost: !Equals [!Sub "${FrontendOrigin}${FrontendBasePath}", "http://localhost:5173/"]
 
 Globals:
   Function:
@@ -152,6 +170,9 @@ Resources:
           ACCOUNT_ID: !Ref AWS::AccountId # Macie CreateClassificationJob needs it
           QUARANTINE_DAYS: !Ref QuarantineDays
           DEMO_CONTROLS: !Ref DemoControls
+          AUTH_REQUIRED: !Ref AuthRequired
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref WebClient
       Policies:
         - S3CrudPolicy: { BucketName: !Ref FilesBucket }
         - DynamoDBCrudPolicy: { TableName: !Ref FilesTable }
@@ -185,13 +206,123 @@ Resources:
                 - macie2:GetFindings
               Resource: "*"
       FunctionUrlConfig:
-        AuthType: NONE # demo only: no login
+        AuthType: NONE # sign-in is checked in code (backend/api/auth.py), see AuthRequired
         Cors:
           AllowOrigins: [!Ref FrontendOrigin]
           AllowMethods: [GET, POST]
-          AllowHeaders: [content-type]
+          AllowHeaders: [content-type, authorization]
+
+  # ---------- Sign-in (docs/login.md) ----------
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-users"
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      Schema: # sign-up asks for name (a standard attribute) and firm (custom:firm), see frontend/src/pages/Auth.tsx
+        - Name: firm
+          AttributeDataType: String
+          Mutable: true
+          StringAttributeConstraints: { MinLength: "1", MaxLength: "128" }
+        # Which workspace the user belongs to: people in one workspace see the same files. Set only by the
+        # sign-up trigger or admin scripts; the web client can't write it (WriteAttributes below).
+        - Name: workspace
+          AttributeDataType: String
+          Mutable: true
+          StringAttributeConstraints: { MinLength: "1", MaxLength: "64" }
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: !If [SignUpAllowed, false, true] # AllowSignUp parameter
+      AccountRecoverySetting: # "Forgot password" codes go to the verified email (never SMS; there's no phone)
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      MfaConfiguration: OPTIONAL
+      EnabledMfas: [SOFTWARE_TOKEN_MFA]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "${AWS::StackName}-${AWS::AccountId}" # sign-in page host prefix, globally unique
+      UserPoolId: !Ref UserPool
+
+  WebClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: web
+      GenerateSecret: false # browser app: no secret
+      # The app's own sign-in forms (frontend/src/auth) talk to Cognito directly: SRP keeps the password
+      # off the wire, refresh tokens keep people signed in. The OAuth settings below are kept for SSO later.
+      ExplicitAuthFlows: [ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+      PreventUserExistenceErrors: ENABLED # sign-in and password reset don't reveal which emails have accounts
+      # What the browser may set on its own account. custom:workspace is left out on purpose: otherwise a user
+      # could move themselves into another firm's workspace and read its files.
+      WriteAttributes: [email, name, custom:firm]
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, email, profile]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: !If
+        - FrontendIsLocalhost
+        - ["http://localhost:5173/"]
+        - [!Sub "${FrontendOrigin}${FrontendBasePath}", "http://localhost:5173/"]
+      LogoutURLs: !If
+        - FrontendIsLocalhost
+        - ["http://localhost:5173/"]
+        - [!Sub "${FrontendOrigin}${FrontendBasePath}", "http://localhost:5173/"]
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 1
+      TokenValidityUnits: { AccessToken: hours, IdToken: hours, RefreshToken: days }
+
+  SignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/signup
+      Handler: handler.main
+      Timeout: 5 # Cognito waits at most 5 s for a trigger
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [cognito-idp:AdminAddUserToGroup, cognito-idp:AdminUpdateUserAttributes]
+              # Wildcard pool: naming UserPool here would be circular (the pool already points at this function)
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+      Events:
+        PostConfirmation:
+          Type: Cognito
+          Properties:
+            UserPool: !Ref UserPool
+            Trigger: PostConfirmation
+
+  AdvisorGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: advisor, UserPoolId: !Ref UserPool, Description: Works on their workspace's files }
+  ComplianceGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: compliance, UserPoolId: !Ref UserPool, Description: Compliance tasks in their workspace (same files as everyone there) }
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: admin, UserPoolId: !Ref UserPool, Description: Runs their own workspace }
+  PlatformGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: platform, UserPoolId: !Ref UserPool, Description: ShredSafe operator; system-wide routes across all workspaces }
 
 Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: Frontend VITE_COGNITO_CLIENT_ID
+    Value: !Ref WebClient
+  CognitoAuthority:
+    Description: Frontend VITE_COGNITO_AUTHORITY (OIDC issuer)
+    Value: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+  CognitoDomain:
+    Description: Frontend VITE_COGNITO_DOMAIN (sign-in and sign-out pages)
+    Value: !Sub "https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
   ApiUrl:
     Description: Put this in the frontend's VITE_API_URL
     Value: !GetAtt ApiFunctionUrl.FunctionUrl
