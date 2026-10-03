@@ -1,6 +1,6 @@
 # Notes for coding agents (ShredSafe hackathon repo)
 
-Read this before changing code. It covers the rules that have already broken the deployed app once.
+Read this before changing code. It covers the rules that have already broken the deployed app once. Start with Rule 0.
 Product and plan: [PLAN.md](PLAN.md). Work breakdown: [STORIES.md](STORIES.md). Who is doing what: [STATUS.md](STATUS.md).
 
 ## Layout
@@ -16,6 +16,30 @@ Product and plan: [PLAN.md](PLAN.md). Work breakdown: [STORIES.md](STORIES.md). 
 | `scripts/` | `seed.py` (A.7), `reset_demo.py` (A.8) | Run by hand against the stack |
 | `data/` | Synthetic demo dataset generators + `samples/` (no real client data, ever) | n/a |
 | `frontend/` | React + TypeScript + Vite | Dev server / preview only |
+
+## Rule 0: check who is doing what before you start
+
+Three people (and their agents) push to one repo. To avoid duplicate work, overwriting each other's code,
+and breaking `main`, do this for **every task, every time**:
+
+1. **Get the latest state.** `git fetch --all --prune`, update from `main`, then read [STATUS.md](STATUS.md),
+   `git log origin/main -15`, and the open PRs (`gh pr list`).
+2. **Claim one task at a time, before writing code.** Add it to your own STATUS.md section as 🟡 and push that
+   edit to `main` right away, so the others see it. Don't claim several tasks at once.
+3. **Leave it if someone already has it.** If a task is claimed by someone else, or is already done (code on
+   `main` or in an open PR, even if nobody claimed it), don't redo it. Pick something else, or ask the owner.
+4. **Don't edit files someone else is working on.** If a teammate's open PR or recent commit touches the same
+   files, coordinate first instead of changing them in parallel.
+5. **Fetch again before you push.** If `main` moved, merge it into your branch, resolve conflicts keeping
+   both sides' intent (never silently drop someone else's change), and rerun the tests (Rule 4).
+6. **Never overwrite a teammate's work.** No force-pushes to shared branches, and no rewriting someone else's
+   code to make yours fit. If two versions of the same task collide, stop, tell your user, and let the owners
+   decide which one stays.
+7. **Close the loop.** When your PR merges, mark the task ✅ in your STATUS.md section with the PR number.
+
+This happened once: two people wired the rules engine into `backend/process/handler.py` at the same time
+(commit `356dec7` and PR #10). The version that reached `main` first crashed the Lambda, and the two
+versions conflicted.
 
 ## Rule 1: Lambda imports never start with `backend.`
 
