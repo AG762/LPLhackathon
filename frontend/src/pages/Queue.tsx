@@ -22,6 +22,36 @@ const FILTERS: { value: Filter; label: string }[] = [
 ]
 
 const SCAN_POLL_MS = 2000
+const BULK_CHUNK = 100 // the API takes at most 100 ids per bulk-approve call (disposal.MAX_BULK)
+
+type Kind = 'ANY' | 'DELETE' | 'RETAIN' | 'REVIEW' | 'HOLD' | 'HIGH'
+const KINDS: { value: Kind; label: string }[] = [
+  { value: 'ANY', label: 'Any recommendation' },
+  { value: 'DELETE', label: 'Ready to delete' },
+  { value: 'HIGH', label: 'High exposure' },
+  { value: 'REVIEW', label: 'Needs review' },
+  { value: 'RETAIN', label: 'Keep (within retention)' },
+  { value: 'HOLD', label: 'On legal hold' },
+]
+
+function matchesKind(f: FileRecord, kind: Kind) {
+  if (kind === 'ANY') return true
+  if (kind === 'HOLD') return isOnHold(f)
+  if (kind === 'HIGH') return f.priority === 'HIGH'
+  if (kind === 'DELETE') return f.recommendation === 'DELETE' && !isOnHold(f)
+  return f.recommendation === kind && !isOnHold(f)
+}
+
+// Search covers what an advisor would type: the file name, the client, or the kind of document.
+function matchesQuery(f: FileRecord, q: string) {
+  if (!q) return true
+  const hay = `${fileName(f)} ${f.clientName ?? ''} ${docTypeLabel(f.docType)} ${f.accountId ?? ''}`.toLowerCase()
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => hay.includes(word))
+}
 
 // Serious tool: springs settle without overshoot.
 const REORDER = { type: 'spring', bounce: 0, visualDuration: 0.45 } as const
@@ -35,6 +65,9 @@ export default function QueuePage() {
   const { files, loaded, error, refresh, upsert } = useFiles()
   const toast = useToast()
   const [filter, setFilter] = useState<Filter>('PENDING')
+  const [query, setQuery] = useState('')
+  const [kind, setKind] = useState<Kind>('ANY')
+  const searchRef = useRef<HTMLInputElement>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<string | null>(null)
   const [busy, setBusy] = useState<Set<string>>(new Set())
@@ -58,10 +91,25 @@ export default function QueuePage() {
     return c
   }, [files])
 
+  const inTab = useMemo(() => (filter === 'ALL' ? files : files.filter((f) => f.status === filter)), [files, filter])
   const visible = useMemo(() => {
-    const list = filter === 'ALL' ? files : files.filter((f) => f.status === filter)
+    const list = inTab.filter((f) => matchesKind(f, kind) && matchesQuery(f, query.trim()))
     return list.some((f) => f.priority) ? sortByPriority(list) : list
-  }, [files, filter])
+  }, [inTab, kind, query])
+  const narrowed = query.trim() !== '' || kind !== 'ANY'
+
+  // "/" jumps to search, as in most tools with a list to filter.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)
+      if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     visibleRef.current = visible
@@ -215,7 +263,14 @@ export default function QueuePage() {
     const ids = [...selected]
     setBusy(new Set(ids))
     try {
-      const { approved, blocked } = await api.bulkApprove(ids)
+      // The API approves at most 100 per call; larger selections go in batches.
+      const approved: FileRecord[] = []
+      const blocked: { fileId: string; status: number; error: string }[] = []
+      for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+        const res = await api.bulkApprove(ids.slice(i, i + BULK_CHUNK))
+        approved.push(...res.approved)
+        blocked.push(...res.blocked)
+      }
       upsert(approved)
       setSelected(new Set())
       const bytes = approved.reduce((s, f) => s + (f.sizeBytes ?? 0), 0)
@@ -315,6 +370,50 @@ export default function QueuePage() {
         ))}
       </div>
 
+      <div className="queue-tools" role="search">
+        <label className="queue-search">
+          <span className="visually-hidden">Search files</span>
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+            <path d="m13 13 4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          <input
+            ref={searchRef}
+            type="search"
+            placeholder="Search by file, client or document type"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+          />
+          <kbd aria-hidden="true">/</kbd>
+        </label>
+        <label className="queue-kind">
+          <span className="visually-hidden">Show</span>
+          <select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
+            {KINDS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {narrowed && (
+          <p className="queue-count" aria-live="polite">
+            Showing <strong className="num">{visible.length}</strong> of <span className="num">{inTab.length}</span>
+            <button
+              type="button"
+              className="btn btn-quiet btn-small"
+              onClick={() => {
+                setQuery('')
+                setKind('ANY')
+              }}
+            >
+              Clear
+            </button>
+          </p>
+        )}
+      </div>
+
       {moved.size > 0 && (
         <p className="moved-note">
           <span className="moved">Up 3</span> means the file moved up 3 places after the scan because it holds more
@@ -342,6 +441,10 @@ export default function QueuePage() {
 
         {!loaded ? (
           <SkeletonRows />
+        ) : visible.length === 0 && narrowed ? (
+          <div className="empty queue-no-match">
+            <p>No files match. Try fewer words, or a different recommendation.</p>
+          </div>
         ) : visible.length === 0 ? (
           <EmptyState filter={filter} hasFiles={files.length > 0} />
         ) : (
