@@ -694,15 +694,6 @@ a:hover {
   color: var(--ink-2);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
-}
 
 /* Toasts rise above the queue's bulk-action bar while it's showing, so they never cover its buttons (F.23). */
 body:has(.bulk-bar) .toasts {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { motion, useAnimate, useInView, useReducedMotion } from 'motion/react'
+import { motion, useAnimate, useInView } from 'motion/react'
 import type { AnimationOptions, DOMKeyframesDefinition } from 'motion/react'
 import { VERDICT, type ShredItem as Item } from '../lib/shredItems'
+import { REDUCED_MOTION } from '../lib/motion'
 
 // The home page hero: files drop into a shredder one at a time and get the same decision the portal
 // would give them. Cleared files are cut into strips; a file under legal hold is stopped at the slot;
@@ -11,7 +12,7 @@ const STRIPS = 16
 const EASE = [0.16, 1, 0.3, 1] as const
 
 export default function Shredder({ items }: { items: Item[] }) {
-  const reduce = useReducedMotion()
+  const reduce = REDUCED_MOTION
   const [scope, animate] = useAnimate<HTMLDivElement>()
   const inView = useInView(scope, { amount: 0.3 })
   const [paused, setPaused] = useState(false)

@@ -434,8 +434,3 @@ html.au-root body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .au-river ul {
-    animation: none;
-  }
-}

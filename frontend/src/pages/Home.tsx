@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
+import { motion, useScroll, useTransform } from 'motion/react'
 import Lenis from 'lenis'
 import '@fontsource-variable/geist'
 import '@fontsource-variable/geist-mono'
@@ -17,6 +17,7 @@ import { pickItems, toItem, type ShredItem } from '../lib/shredItems'
 import { fileName, isOnHold } from '../lib/format'
 import { useFiles } from '../state/files'
 import './home.css'
+import { REDUCED_MOTION } from '../lib/motion'
 
 // Monthly price per advisor, in dollars. Left unset until the team agrees on a number.
 const PRICE_PER_ADVISOR: number | null = null
@@ -94,7 +95,7 @@ function useSmoothScroll(enabled: boolean) {
 
 export default function HomePage() {
   const { files, loaded, error } = useFiles()
-  const reduce = useReducedMotion() ?? false
+  const reduce = REDUCED_MOTION
   useSmoothScroll(!reduce)
   const navTone = useNavTone()
   // The opening plays once per visit: coming back from the portal goes straight to the lit stage.

@@ -615,12 +615,6 @@ html.lenis body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hs-cue-line,
-  .hs-status-idle .hs-led {
-    animation: none;
-  }
-}
 
 /* ---------- file river: the count ---------- */
 
