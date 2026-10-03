@@ -34,11 +34,16 @@ def user_pool_id(stack, region):
     raise SystemExit("Stack has no UserPoolId output; deploy the sign-in resources first (sam build && sam deploy)")
 
 
+def current_workspace(cognito, pool, email):
+    attrs = cognito.admin_get_user(UserPoolId=pool, Username=email).get("UserAttributes", [])
+    return next((a["Value"] for a in attrs if a["Name"] == "custom:workspace"), None)
+
+
 def create_user(cognito, pool, email, role, password=None, workspace=None):
     """Create the user if needed and add them to the role's group.
 
-    New accounts join `workspace`, or a new one when it's None. An existing account only changes
-    workspace when one is given. Returns (created, workspace set now or None)."""
+    New accounts join `workspace`, or a new one when it's None. An existing account changes workspace
+    only when one is given, or gets a new one if it has none yet. Returns (created, workspace set now or None)."""
     invite = {"MessageAction": "SUPPRESS"} if password else {"DesiredDeliveryMediums": ["EMAIL"]}
     try:
         workspace_for_new = workspace or new_workspace_id()
@@ -51,6 +56,8 @@ def create_user(cognito, pool, email, role, password=None, workspace=None):
         created, workspace_set = True, workspace_for_new
     except cognito.exceptions.UsernameExistsException:
         created, workspace_set = False, None
+        if not workspace and not current_workspace(cognito, pool, email):
+            workspace = new_workspace_id()  # made before workspaces existed: give it one of its own
         if workspace:
             cognito.admin_update_user_attributes(
                 UserPoolId=pool, Username=email, UserAttributes=[{"Name": "custom:workspace", "Value": workspace}])
@@ -79,8 +86,8 @@ def main(argv=None):
         print(f"Created {args.email} as {args.role} ({how}).")
     else:
         print(f"{args.email} already existed; added to {args.role}.")
-    if workspace:
-        print(f"Workspace: {workspace}   (add teammates with --workspace {workspace})")
+    workspace = workspace or current_workspace(cognito, pool, args.email)
+    print(f"Workspace: {workspace}   (add teammates with --workspace {workspace})")
 
 
 if __name__ == "__main__":

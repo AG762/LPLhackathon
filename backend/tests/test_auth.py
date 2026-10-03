@@ -325,9 +325,17 @@ def test_create_user_script_workspaces_and_groups():
                 raise Exists()
             self.users.add(kw["Username"])
             ws = next(a["Value"] for a in kw["UserAttributes"] if a["Name"] == "custom:workspace")
+            self.workspaces[kw["Username"]] = ws
             calls.append(("create", kw["Username"], ws))
 
+        workspaces = {}
+
+        def admin_get_user(self, **kw):
+            ws = self.workspaces.get(kw["Username"])
+            return {"UserAttributes": [{"Name": "custom:workspace", "Value": ws}] if ws else []}
+
         def admin_update_user_attributes(self, **kw):
+            self.workspaces[kw["Username"]] = kw["UserAttributes"][0]["Value"]
             calls.append(("workspace", kw["Username"], kw["UserAttributes"][0]["Value"]))
 
         def admin_add_user_to_group(self, **kw):
@@ -350,6 +358,34 @@ def test_create_user_script_workspaces_and_groups():
     create_user.create_user(cognito, POOL, "test@example.com", "advisor", password="Long-test-pass-1", workspace=ws)
     assert calls == [("create", "test@example.com", ws), ("password", "test@example.com", True),
                      ("group", "test@example.com", "advisor")]
+
+
+def test_create_user_gives_an_existing_account_without_a_workspace_one():
+    _scripts()
+    import create_user
+
+    class Exists(Exception):
+        pass
+
+    updates = []
+
+    class OldAccount:  # created before workspaces existed
+        exceptions = SimpleNamespace(UsernameExistsException=Exists)
+
+        def admin_create_user(self, **kw):
+            raise Exists()
+
+        def admin_get_user(self, **kw):
+            return {"UserAttributes": [{"Name": "email", "Value": kw["Username"]}]}
+
+        def admin_update_user_attributes(self, **kw):
+            updates.append(kw["UserAttributes"][0]["Value"])
+
+        def admin_add_user_to_group(self, **kw):
+            pass
+
+    created, ws = create_user.create_user(OldAccount(), POOL, "alex@example.com", "admin")
+    assert (created, updates) == (False, [ws]) and ws.startswith("ws-")
 
 
 def test_seed_can_give_demo_holds_to_a_workspace():
