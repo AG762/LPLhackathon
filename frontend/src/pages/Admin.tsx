@@ -196,7 +196,7 @@ function People({ onCount, selfEmail }: { onCount: (n: number) => void; selfEmai
     setBusy(m.userId)
     try {
       await api.setMemberRole(m.userId, next)
-      toast(`${m.name ?? m.email} is now ${next === 'admin' ? 'an admin' : `a ${next} user`}.`, 'ok')
+      toast(`${m.name ?? m.email} is now ${next === 'admin' ? 'an admin' : next === 'advisor' ? 'an advisor' : 'on the compliance team'}.`, 'ok')
       await load()
     } catch (err) {
       toast(errorText(err), 'error')
