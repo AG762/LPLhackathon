@@ -181,7 +181,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         {hero ? (
           <HeroScroll cleared={hero.cleared} held={hero.held} intro={intro} still={reduce} onIntroDone={introDone} />
         ) : (
