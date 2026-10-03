@@ -106,7 +106,8 @@ _Last updated: 2026-10-02_
 | F.17 | Launch-ready copy pass over the whole site (home, sign-in, portal, admin) | ✅ Done (PR #25) | Wording only: no hackathon/dev notes in the UI, consistent terms, honest claims |
 | F.18 | Admin page checks the role itself (advisors could open /admin) | 🔵 In review (PR #27) | People tab admin-only; compliance keeps holds + rules. Script side reported to Arihant |
 | D.8 | Admin API for the Admin page: `/rules`, `/holds` (place, release), `/admin/users` (invite, role, access), scoped to the caller's workspace | 🔵 In review (PR #28, needs deploy) | Per docs/admin-api.md. For Arihant to review + deploy (touches handler routes, template IAM). Not merging myself |
-| F.19 | Start the sensitive-data scan automatically when an upload batch finishes, with a time estimate under the scan status | 🟡 In progress (branch aryan-auto-scan) | Skips if a scan is already running |
+| F.19 | Start the sensitive-data scan automatically when an upload batch finishes, with a time estimate under the scan status | 🔵 In review (PR #29) | Skips if a scan is already running |
+| D.9 | Email each uploader when their files are scanned and ready for review (Amazon SES, scheduled) | 🔵 In review (branch aryan-scan-email) | Off until NotifyFrom is set. Setup for Arihant: docs/notifications.md (verify sender + recipients in SES, set params, deploy) |
 | — | `docs/feature-proposals.md` (P1: scan only new or changed files) | ✅ Merged (PR #17) | Team to set the Decision column; mark ✅ there if built |
 
 **Not yet verified live:** everything above is tested locally (65 backend tests + mock mode) but not against the deployed stack. As of the last check the live API still returns 501 for `/audit`, so it needs a redeploy.
