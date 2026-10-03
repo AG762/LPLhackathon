@@ -278,15 +278,20 @@ a:hover {
 }
 
 .mode-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   border: 1.5px solid currentColor;
   flex: none;
 }
 
+/* Selected source: a solid green "on" light with a soft ring, so the choice is never in doubt. */
 .mode-switch button[aria-pressed='true'] .mode-dot {
-  background: currentColor;
+  width: 9px;
+  height: 9px;
+  border-color: var(--safe);
+  background: var(--safe);
+  box-shadow: 0 0 0 3px rgb(0 122 77 / 0.22);
 }
 
 .mode-now {
