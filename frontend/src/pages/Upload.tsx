@@ -180,7 +180,9 @@ export default function UploadPage() {
         aria-label="Choose files to upload, or drop a folder here"
         // The whole area opens the file picker, not just the buttons (F.23)
         onClick={(e) => {
-          if (!(e.target as HTMLElement).closest('button')) fileInput.current?.click()
+          // Ignore clicks from the buttons and from the hidden inputs themselves: input.click() bubbles up to here,
+          // and opening a second picker in the same click cancels the first, so neither opened.
+          if (!(e.target as HTMLElement).closest('button, input')) fileInput.current?.click()
         }}
         onKeyDown={(e) => {
           if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
