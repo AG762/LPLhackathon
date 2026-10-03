@@ -26,7 +26,8 @@ const ACTION_LABELS: Record<string, string> = {
 }
 
 function actorLabel(actor: string) {
-  if (actor.startsWith('system:')) return `System (${actor.slice(7)})`
+  const SYSTEM_ACTORS: Record<string, string> = { process: 'ShredSafe classifier', api: 'ShredSafe' }
+  if (actor.startsWith('system:')) return SYSTEM_ACTORS[actor.slice(7)] ?? 'ShredSafe'
   return actor
 }
 

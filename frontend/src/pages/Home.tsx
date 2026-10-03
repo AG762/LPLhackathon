@@ -121,7 +121,7 @@ export default function HomePage() {
     }
   }, [files, usable])
 
-  const source = usable ? (mode === 'live' ? 'the live AWS stack' : 'the built-in demo data') : 'the sample dataset'
+  const source = usable && mode === 'live' ? 'your workspace' : 'the sample workspace'
 
   return (
     <div className={`hp ${ready ? 'is-ready' : ''}`}>
@@ -218,11 +218,16 @@ export default function HomePage() {
                 <p className="hp-close-note">
                   Start with one branch. See what ShredSafe would clear, and approve nothing until you're sure.
                 </p>
-                <Magnetic strength={0.25}>
-                  <Link className="hp-pill hp-pill-ink hp-pill-big" to="/dashboard">
-                    Try it now
+                <div className="hp-close-ctas">
+                  <Magnetic strength={0.25}>
+                    <Link className="hp-pill hp-pill-ink hp-pill-big" to="/signup">
+                      Start a pilot
+                    </Link>
+                  </Magnetic>
+                  <Link className="hp-close-alt" to="/dashboard">
+                    Or try it with sample files
                   </Link>
-                </Magnetic>
+                </div>
               </div>
               <ul className="hp-included" aria-label="Included">
                 <li>Retention rules for every common advisor document</li>
@@ -239,8 +244,8 @@ export default function HomePage() {
               <BrandMark />
               ShredSafe
             </span>
-            <p>Built on Amazon S3, Bedrock, Macie, Lambda and DynamoDB.</p>
-            <p>LPL Financial University Hackathon. Synthetic data only.</p>
+            <p>Defensible disposal for financial advisors. Built on AWS.</p>
+            <p>Every client name and file shown here is synthetic sample data.</p>
           </footer>
         </Paper>
       </main>

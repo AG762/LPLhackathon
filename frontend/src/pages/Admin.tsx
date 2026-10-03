@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { AnimatePresence, motion } from 'motion/react'
 import { api } from '../api/client'
 import { Chip } from '../components/Sign'
-import { DEMO_ADVISOR, docTypeLabel, fileName, formatDate, formatDateTime } from '../lib/format'
+import { DEMO_ADVISOR, docTypeLabel, fileName, formatDate } from '../lib/format'
 import { useFiles } from '../state/files'
 import { useToast } from '../state/toast'
 import type { FileRecord, HoldScope, LegalHold, Member, RetentionRule, Role } from '../types'
@@ -15,7 +15,7 @@ import './admin.css'
 type Tab = 'team' | 'holds' | 'rules'
 
 const ROLES: { value: Role; label: string; can: string }[] = [
-  { value: 'advisor', label: 'Advisor', can: 'Uploads files and decides on their own' },
+  { value: 'advisor', label: 'Advisor', can: 'Uploads files and approves deletions for their own clients' },
   { value: 'compliance', label: 'Compliance', can: 'Sees every file in the firm and manages legal holds' },
   { value: 'admin', label: 'Admin', can: 'Everything compliance can, plus people and settings' },
 ]
@@ -28,6 +28,8 @@ const SCOPES: { value: HoldScope; label: string; placeholder: string }[] = [
   { value: 'KEYWORD', label: 'File name keyword', placeholder: 'e.g. Okafor' },
 ]
 
+const whenShort = (iso: string) =>
+  new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 const scopeLabel = (s: HoldScope) => SCOPES.find((x) => x.value === s)?.label ?? s
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -98,7 +100,7 @@ function Unavailable({ message, retry }: { message: string; retry: () => void })
       <h2>{notBuilt ? 'Not connected to the live stack yet' : "Couldn't load this"}</h2>
       <p>
         {notBuilt
-          ? `${message}. Switch the data source to Demo to try this screen, or ask for the admin API routes to be added.`
+          ? 'This part of your workspace isn\'t switched on yet. Switch the workspace data to Sample to explore it.'
           : message}
       </p>
       <button type="button" className="btn btn-small" onClick={retry}>
@@ -279,7 +281,7 @@ function People({ onCount }: { onCount: (n: number) => void }) {
                         {m.status === 'DISABLED' && <Chip level="ghost">Disabled</Chip>}
                       </td>
                       <td className="muted">
-                        {m.lastActiveAt ? formatDateTime(m.lastActiveAt) : m.invitedAt ? `Invited ${formatDate(m.invitedAt)}` : '—'}
+                        {m.lastActiveAt ? whenShort(m.lastActiveAt) : m.invitedAt ? `Invited ${formatDate(m.invitedAt)}` : '—'}
                       </td>
                       <td className="admin-actions">
                         {!self && (
@@ -601,7 +603,7 @@ function Rules({ onCount }: { onCount: (n: number) => void }) {
     <>
       <p className="admin-intro">
         The schedule the rules engine applies to every file. A legal hold overrides all of it. Changes go through
-        compliance and are versioned in <code>config/retention_rules.json</code>, so every recommendation can be traced
+        compliance and are version-controlled, so every recommendation can be traced
         to the rule that made it.
       </p>
       <div className="admin-table-wrap">
