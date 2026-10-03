@@ -1,0 +1,6 @@
+LPL FINANCIAL TRADE CONFIRMATION
+Trade date: 2025-04-03
+Client: Rafael Ramirez
+Account: LPL-640288
+Action: SOLD 40 NVDA @ $110.42
+Status: EXECUTED

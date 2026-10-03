@@ -10,3 +10,34 @@ file,docType,recommendation,priority,legalHold,why
 2024_Trade_Confirm_AAPL.txt,TRADE_CONFIRMATION,RETAIN,LOW,no,2024 trade confirmation within its 6-year retention (SEC 17a-4 / FINRA 4511)
 Office_Potluck_Recipes_2022.txt,PERSONAL,DELETE,LOW,no,"Personal file, not a business record"
 Q3_Financial_Plan_Proposal_v1_draft.txt,DRAFT,DELETE,LOW,no,Working draft with no retention requirement
+Statement_Okafor_2017_03.txt,ACCOUNT_STATEMENT,DELETE,LOW,no,March 2017 statement; SEC 17a-4 6-year schedule ended in 2023
+Statement_Chen_2018_09.txt,ACCOUNT_STATEMENT,DELETE,LOW,no,September 2018 statement; SEC 17a-4 6-year schedule ended in 2024
+Statement_Chen_2018_09 (1).txt,ACCOUNT_STATEMENT,DELETE,LOW,no,"Exact copy of the September 2018 Chen statement; past retention like the original (duplicate detection, B.4, would also flag it)"
+Statement_Lindqvist_2021_06.txt,ACCOUNT_STATEMENT,RETAIN,LOW,no,June 2021 statement; SEC 17a-4 6-year schedule runs to 2027
+Statement_Ramirez_2024_12.txt,ACCOUNT_STATEMENT,RETAIN,LOW,no,December 2024 statement; SEC 17a-4 6-year schedule runs to 2030
+Statement_Novak_2026_06.txt,ACCOUNT_STATEMENT,RETAIN,LOW,no,June 2026 statement; SEC 17a-4 6-year schedule runs to 2032
+Trade_Confirm_MSFT_2016_11.txt,TRADE_CONFIRMATION,DELETE,LOW,no,November 2016 sale; SEC 17a-4 6-year schedule ended in 2022
+Trade_Confirm_MSFT_2016_11 - Copy.txt,TRADE_CONFIRMATION,DELETE,LOW,no,Exact copy of the 2016 MSFT confirmation; past retention like the original
+Trade_Confirm_VTI_2019_02.txt,TRADE_CONFIRMATION,DELETE,LOW,no,February 2019 purchase; SEC 17a-4 6-year schedule ended in February 2025
+Trade_Confirm_BND_2022_08.txt,TRADE_CONFIRMATION,RETAIN,LOW,no,August 2022 purchase; SEC 17a-4 6-year schedule runs to 2028
+Trade_Confirm_NVDA_2025_04.txt,TRADE_CONFIRMATION,RETAIN,LOW,no,April 2025 sale; SEC 17a-4 6-year schedule runs to 2031
+Trade_Confirm_SPY_2026_03.txt,TRADE_CONFIRMATION,RETAIN,LOW,no,March 2026 purchase; SEC 17a-4 6-year schedule runs to 2032
+Q3_Financial_Plan_Proposal_v2_draft.txt,DRAFT,DELETE,LOW,no,"Second working draft; superseded by the final, no retention requirement"
+Q3_Financial_Plan_Proposal_FINAL.txt,CLIENT_COMMUNICATION,RETAIN,LOW,no,Final plan sent to the client in July 2026; SEC 17a-4(b)(4) 3-year schedule runs to 2029
+Retirement_Income_Plan_Okafor_v1.txt,DRAFT,DELETE,LOW,no,"First draft, marked not for client distribution; the final is kept"
+Retirement_Income_Plan_Okafor_v2.txt,DRAFT,DELETE,LOW,no,"Second draft, marked not for client distribution; the final is kept"
+Retirement_Income_Plan_Okafor_FINAL.txt,CLIENT_COMMUNICATION,RETAIN,LOW,no,Final plan delivered to the client in September 2025; SEC 17a-4(b)(4) 3-year schedule runs to 2028
+Email_Brennan_2018_05.eml,CLIENT_COMMUNICATION,DELETE,LOW,no,May 2018 client email; SEC 17a-4(b)(4) 3-year schedule ended in 2021
+Email_Sato_2022_01.eml,CLIENT_COMMUNICATION,DELETE,LOW,no,January 2022 client email; SEC 17a-4(b)(4) 3-year schedule ended in January 2025
+Email_Delgado_2025_11.eml,CLIENT_COMMUNICATION,RETAIN,LOW,no,November 2025 recommendation to the client; SEC 17a-4(b)(4) 3-year schedule runs to 2028
+Newsletter_Spring_2019.txt,MARKETING,DELETE,LOW,no,Published April 2019; Advisers Act 204-2 5-year schedule ended in 2024
+Newsletter_Spring_2019 (copy).txt,MARKETING,DELETE,LOW,no,Exact copy of the Spring 2019 newsletter; past retention like the original
+Seminar_Flyer_Retirement_2020.txt,MARKETING,DELETE,LOW,no,Published October 2020; Advisers Act 204-2 5-year schedule ended in October 2025
+Newsletter_Winter_2024.txt,MARKETING,RETAIN,LOW,no,Published January 2024; Advisers Act 204-2 5-year schedule runs to 2029
+Market_Outlook_2026.txt,MARKETING,RETAIN,LOW,no,Published January 2026; Advisers Act 204-2 5-year schedule runs to 2031
+Fantasy_Football_Draft_2023.txt,PERSONAL,DELETE,LOW,no,"Personal file, not a business record"
+Gym_Receipt_2024.txt,PERSONAL,DELETE,LOW,no,"Personal receipt, not a business record"
+Vacation_Itinerary_Cabo_2022.txt,PERSONAL,DELETE,LOW,no,"Personal travel plans, not a business record"
+ID_Scan_Okafor_2015.png,UNKNOWN,REVIEW,LOW,no,"Image scan; the text pipeline can't read images, so a person reviews it"
+W9_Scan_Chen_2017.png,UNKNOWN,REVIEW,LOW,no,"Image scan of a W-9; the text pipeline can't read images, so a person reviews it"
+Funny_Cat_Meme.png,UNKNOWN,REVIEW,LOW,no,"Image; the text pipeline can't read images, so a person reviews it"

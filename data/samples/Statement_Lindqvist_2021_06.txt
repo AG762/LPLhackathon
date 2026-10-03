@@ -1,0 +1,9 @@
+LPL FINANCIAL ACCOUNT STATEMENT
+Statement period: 2021-06-01 to 2021-06-30
+Client: Elena Lindqvist
+Account: LPL-770413
+
+Beginning value      $412,006.00
+Deposits                  $0.00
+Withdrawals           $1,200.00
+Ending value         $415,750.07

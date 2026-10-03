@@ -1,0 +1,6 @@
+LPL FINANCIAL TRADE CONFIRMATION
+Trade date: 2022-08-09
+Client: Elena Lindqvist
+Account: LPL-770413
+Action: BOUGHT 300 BND @ $76.88
+Status: EXECUTED

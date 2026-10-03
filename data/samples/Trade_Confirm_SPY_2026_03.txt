@@ -1,0 +1,6 @@
+LPL FINANCIAL TRADE CONFIRMATION
+Trade date: 2026-03-16
+Client: Tomas Novak
+Account: LPL-219956
+Action: BOUGHT 25 SPY @ $571.10
+Status: EXECUTED

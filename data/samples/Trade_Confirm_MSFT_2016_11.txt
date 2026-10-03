@@ -1,0 +1,6 @@
+LPL FINANCIAL TRADE CONFIRMATION
+Trade date: 2016-11-14
+Client: Daniel Okafor
+Account: LPL-551204
+Action: SOLD 120 MSFT @ $59.43
+Status: EXECUTED

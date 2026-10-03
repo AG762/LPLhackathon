@@ -1,0 +1,6 @@
+LPL FINANCIAL TRADE CONFIRMATION
+Trade date: 2019-02-20
+Client: Mei Chen
+Account: LPL-330917
+Action: BOUGHT 80 VTI @ $141.02
+Status: EXECUTED
