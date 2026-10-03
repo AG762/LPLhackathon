@@ -33,7 +33,8 @@ Run these in the online VS Code workspace (it has AWS credentials). Only Arihant
    ```bash
    curl -X POST "$API/scan"; sleep 600; curl "$API/scan/status"   # wait for "COMPLETE"
    ```
-   **Don't ingest yet.** The demo's "queue re-sorts" moment is the ingest. (Needs the follow-up below.)
+   **Don't ingest yet.** The demo's "queue re-sorts" moment is the ingest: the button then reads
+   **Show sensitive-data results** (PR #13, F.10).
 5. **Live folder**: keep 4 files aside for the on-stage upload, e.g. `Trade_Confirm_SPY_2026_03.txt`,
    `Q3_Financial_Plan_Proposal_v2_draft.txt`, `Gym_Receipt_2024.txt`, `Email_Delgado_2025_11.eml`.
 6. **Frontend**: `cd frontend && npm run online` (needs PR #8), then open
@@ -44,7 +45,7 @@ Run these in the online VS Code workspace (it has AWS credentials). Only Arihant
 
 - [ ] `curl $API/audit/verify` returns `{"ok": true}`
 - [ ] Queue shows the pre-uploaded files, the two held clients flagged LEGAL HOLD
-- [ ] `curl $API/scan/status` shows `COMPLETE`
+- [ ] `curl $API/scan/status` shows `COMPLETE`, and the queue's button reads **Show sensitive-data results**
 - [ ] Audit page: "Simulate tampering" and "Restore original entry" are visible (demo controls on)
 - [ ] Backup video plays offline
 - [ ] Notifications off, browser zoom 125%, one tab
@@ -55,7 +56,7 @@ Run these in the online VS Code workspace (it has AWS credentials). Only Arihant
 |---|---|---|---|
 | 1 | 0:00–0:30 | Slides: cover, problem | "The average advisor keeps documents for years longer than any rule requires. Every extra SSN is one more liability in a breach. But advisors don't delete anything, because they're afraid of breaking a rule." |
 | 2 | 0:30–1:00 | Upload page: drag the 4-file live folder in | "An advisor drops in a folder. Each file goes straight to S3, and a Lambda sends it to Amazon Bedrock to classify." |
-| 3 | 1:00–2:00 | Review queue: new rows appear. Open one row. Click **Scan for sensitive data** | "Every file gets a recommendation and the reason: the rule, its citation, the AI's confidence. The AI suggests; the rules engine decides." Then: "Macie counted the SSNs and account numbers in every file. The riskiest files jump to the top: this client list holds 50 SSNs and is past retention. Delete first." |
+| 3 | 1:00–2:00 | Review queue: new rows appear. Open one row. Click **Show sensitive-data results** | "Every file gets a recommendation and the reason: the rule, its citation, the AI's confidence. The AI suggests; the rules engine decides." Then: "Macie counted the SSNs and account numbers in every file. The riskiest files jump to the top: this client list holds 50 SSNs and is past retention. Delete first." |
 | 4 | 2:00–2:45 | Point at the LEGAL HOLD row (Margaret Whitaker's 2019 email). Try **Approve**: it's blocked | "This email is past its 3-year window and looks like clutter. But the client is under a legal hold, so the server refuses to delete it. This is the file that gets firms fined. We caught it." |
 | 5 | 2:45–3:30 | Select all deletable files, **Approve N for deletion**. Open **Grace period** tab | "One click approves the safe deletions. Nothing is gone yet: they wait in a grace period where any file can be restored, then purge for good." |
 | 6 | 3:30–4:15 | Audit log: show **Integrity check passed**. Click **Simulate tampering**: it fails at one entry. **Restore original entry**. **Download certificate of disposal** | "Every action is in a hash-chained log. If anyone edits an entry, the check fails at exactly that entry, and the certificate is blocked. Restore it, and here's the certificate an examiner can check." |
@@ -81,9 +82,3 @@ Then redo T-60 steps 4–5. Log each dry run:
 |---|---|---|---|---|
 | 1 | | | | |
 | 2 | | | | |
-
-## Follow-up needed for step 3
-
-The frontend's Scan button starts a new Macie job (minutes). For the demo it should apply a finished scan
-instantly: when `/scan/status` is `COMPLETE` and no file has a priority yet, call `/scan/ingest` directly.
-Tracked as a frontend task in STATUS.md.
