@@ -2,6 +2,7 @@ import { useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { formatBytes } from '../lib/format'
+import { scanEta } from '../lib/scanEstimate'
 import { useFiles } from '../state/files'
 import './upload.css'
 
@@ -37,12 +38,16 @@ async function filesFromEntry(entry: FileSystemEntry, prefix = ''): Promise<{ fi
   return []
 }
 
+// After a batch lands, the sensitive-data scan starts by itself (F.19), unless one is already running.
+type ScanNote = { kind: 'started'; startedAt: string } | { kind: 'busy' } | { kind: 'failed'; message: string }
+
 const isJunk = (name: string) => name.startsWith('.') || name === 'Thumbs.db' || name === 'desktop.ini'
 
 export default function UploadPage() {
   const [items, setItems] = useState<Item[]>([])
   const [dragging, setDragging] = useState(false)
   const [running, setRunning] = useState(false)
+  const [scanNote, setScanNote] = useState<ScanNote | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
   const { refresh } = useFiles()
@@ -59,6 +64,7 @@ export default function UploadPage() {
     setRunning(true)
 
     let next = 0
+    let uploaded = 0
     const worker = async () => {
       while (next < fresh.length) {
         const it = fresh[next++]
@@ -67,6 +73,7 @@ export default function UploadPage() {
           const { url, headers } = await api.uploadUrl(it.file.name)
           await api.putFile(url, it.file, (p) => update(it.key, { progress: p }), headers)
           update(it.key, { state: 'done', progress: 1 })
+          uploaded++
         } catch (e) {
           update(it.key, { state: 'failed', error: e instanceof Error ? e.message : String(e) })
         }
@@ -75,6 +82,23 @@ export default function UploadPage() {
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, fresh.length) }, worker))
     setRunning(false)
     void refresh()
+    if (uploaded > 0) void scanAfterUpload()
+  }
+
+  // Classification already happens per file as it lands; this starts the slower sensitive-data scan so the
+  // queue can rank the new files by exposure without anyone having to remember to click.
+  async function scanAfterUpload() {
+    try {
+      const status = await api.scanStatus()
+      if (status.state === 'RUNNING') {
+        setScanNote({ kind: 'busy' })
+        return
+      }
+      await api.startScan()
+      setScanNote({ kind: 'started', startedAt: new Date().toISOString() })
+    } catch (e) {
+      setScanNote({ kind: 'failed', message: e instanceof Error ? e.message : String(e) })
+    }
   }
 
   async function onDrop(e: DragEvent) {
@@ -167,6 +191,7 @@ export default function UploadPage() {
           {!running && done > 0 && (
             <p className="upload-hint muted">Files show up in the queue as soon as they're classified, usually within a few seconds.</p>
           )}
+          {!running && scanNote && <ScanNoteLine note={scanNote} fileCount={done} />}
           <ul className="upload-items">
             {items.map((it) => (
               <li key={it.key} className={`upload-item upload-${it.state}`}>
@@ -197,5 +222,29 @@ export default function UploadPage() {
         </section>
       )}
     </>
+  )
+}
+
+function ScanNoteLine({ note, fileCount }: { note: ScanNote; fileCount: number }) {
+  if (note.kind === 'failed') {
+    return (
+      <p className="upload-scan upload-scan-failed" role="status">
+        Couldn't start the sensitive-data scan ({note.message}). Start it from the review queue.
+      </p>
+    )
+  }
+  if (note.kind === 'busy') {
+    return (
+      <p className="upload-scan" role="status">
+        A sensitive-data scan was already running, so it may not include these files. When it finishes, start another
+        from the review queue.
+      </p>
+    )
+  }
+  return (
+    <p className="upload-scan" role="status">
+      <strong>Sensitive-data scan started.</strong> {scanEta(note.startedAt, fileCount)} The review queue ranks the files
+      by exposure when it's done.
+    </p>
   )
 }
