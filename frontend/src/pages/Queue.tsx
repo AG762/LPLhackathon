@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { api, ApiError } from '../api/client'
 import { Chip, Sign } from '../components/Sign'
+import { HoldFromFile } from '../components/HoldFromFile'
 import { useFiles } from '../state/files'
 import { useToast } from '../state/toast'
 import { scanEta } from '../lib/scanEstimate'
@@ -775,6 +776,7 @@ function Details({ file: f }: { file: FileRecord }) {
             <span className="muted">Rule</span> {f.citation}
           </p>
         )}
+        {f.status === 'PENDING' && <HoldFromFile file={f} />}
       </div>
       <dl className="details-facts">
         {f.confidence != null && (

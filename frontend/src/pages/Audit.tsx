@@ -90,6 +90,38 @@ export default function AuditPage() {
     await load()
   }
 
+  // P3: the whole log as a spreadsheet for examiners. Built from what's on screen, so it needs no new route.
+  function exportCsv() {
+    if (!entries?.length) return
+    const cell = (v: unknown) => {
+      const text = v == null ? '' : String(v)
+      // Quote everything; neutralise leading = + - @ so a spreadsheet never runs a cell as a formula.
+      return `"${(/^[=+\-@]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`
+    }
+    const header = ['Seq', 'Time (UTC)', 'Who', 'Action', 'File', 'File ID', 'Rule', 'Detail', 'File SHA-256', 'Previous hash', 'Entry hash']
+    const rows = entries.map((e) => [
+      e.seq,
+      e.timestamp,
+      actorLabel(e.actor),
+      ACTION_LABELS[e.action] ?? e.action,
+      e.fileId ? (names.get(e.fileId) ?? '') : '',
+      e.fileId ?? '',
+      e.ruleApplied ?? '',
+      e.detail ?? '',
+      e.fileHash ?? '',
+      e.prevHash,
+      e.entryHash,
+    ])
+    const csv = [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `shredsafe-audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast(`Exported ${entries.length} audit entries.`, 'ok')
+  }
+
   async function downloadCertificate() {
     setDownloading(true)
     try {
@@ -131,6 +163,9 @@ export default function AuditPage() {
             aria-describedby={verify?.ok === false ? 'cert-blocked' : undefined}
           >
             {downloading ? 'Preparing…' : 'Download certificate of disposal'}
+          </button>
+          <button className="btn" onClick={exportCsv} disabled={!entries?.length}>
+            Export as CSV
           </button>
           {verify?.ok === false && (
             <span id="cert-blocked" className="cert-blocked">
