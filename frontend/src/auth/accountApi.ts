@@ -70,6 +70,10 @@ function friendly(e: unknown): AccountError {
     case 'NotAuthorizedException':
       // Cognito uses NotAuthorized for more than a wrong password (account turned off, too many attempts,
       // app settings). Only the wrong-password case gets the generic line; the rest say what's wrong.
+      // The pool was deployed invite-only (AllowSignUp=false): say so instead of blaming the password
+      if (/sign ?up is not permitted/i.test(err.message ?? '')) {
+        return new AccountError('New accounts on this site are by invitation. Ask your firm’s admin to invite you.')
+      }
       return new AccountError(
         !err.message || /incorrect username or password/i.test(err.message)
           ? 'That email and password don’t match an account.'
