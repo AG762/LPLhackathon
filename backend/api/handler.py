@@ -7,12 +7,14 @@ import re
 
 import auth
 from http_utils import HttpError, Request, response
-from routes import audit, dashboard, disposal, files, records, scan
+from routes import admin, audit, dashboard, disposal, files, records, scan
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 ID = r"(?P<file_id>[^/]+)"
+HOLD = r"(?P<hold_id>[^/]+)"
+USER = r"(?P<user_id>[^/]+)"
 
 # Order matters: literal paths before {id} patterns.
 # Optional 4th item: the role the route needs (default "advisor"; advisor < compliance < admin < platform, see auth.py).
@@ -37,6 +39,16 @@ ROUTES = [
     ("POST", r"/audit/demo/tamper", audit.demo_tamper, "platform"),
     ("POST", r"/audit/demo/restore", audit.demo_restore, "platform"),
     ("GET", r"/certificate", audit.certificate),
+    # Admin page (docs/admin-api.md): rules for anyone signed in, holds for compliance, people for admins
+    ("GET", r"/rules", admin.list_rules),
+    ("GET", r"/holds", admin.list_holds, "compliance"),
+    ("POST", r"/holds", admin.place_hold, "compliance"),
+    ("POST", rf"/holds/{HOLD}/release", admin.release_hold, "compliance"),
+    ("GET", r"/admin/users", admin.list_members, "admin"),
+    ("POST", r"/admin/users", admin.invite_member, "admin"),
+    ("POST", rf"/admin/users/{USER}/role", admin.set_member_role, "admin"),
+    ("POST", rf"/admin/users/{USER}/disable", admin.disable_member, "admin"),
+    ("POST", rf"/admin/users/{USER}/enable", admin.enable_member, "admin"),
 ]
 _COMPILED = [(r[0], re.compile(r[1] + r"/?"), r[2], r[3] if len(r) > 3 else "advisor") for r in ROUTES]
 

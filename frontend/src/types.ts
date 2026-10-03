@@ -131,6 +131,9 @@ export interface LegalHold {
   releasedAt?: string
   releaseReason?: string
   matchedFiles?: number
+  workspaceId?: string
+  // Only on a release: files the hold had parked that went back to REVIEW.
+  reopenedFiles?: number
 }
 
 // One row of config/retention_rules.json.

@@ -178,8 +178,21 @@ Resources:
         - DynamoDBCrudPolicy: { TableName: !Ref FilesTable }
         - DynamoDBCrudPolicy: { TableName: !Ref AuditLogTable }
         - DynamoDBReadPolicy: { TableName: !Ref RetentionRulesTable }
-        - DynamoDBReadPolicy: { TableName: !Ref LegalHoldsTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref LegalHoldsTable } # the Admin page places and releases holds (D.8)
         - Statement:
+            # Admin page, People tab (D.8): invite, change role, turn access off/on, within the caller's workspace
+            - Effect: Allow
+              Action:
+                - cognito-idp:ListUsers
+                - cognito-idp:AdminGetUser
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminCreateUser
+                - cognito-idp:AdminAddUserToGroup
+                - cognito-idp:AdminRemoveUserFromGroup
+                - cognito-idp:AdminDisableUser
+                - cognito-idp:AdminEnableUser
+                - cognito-idp:AdminUserGlobalSignOut
+              Resource: !GetAtt UserPool.Arn
             - Effect: Allow
               Action:
                 - s3:PutObjectRetention # locking files in records/ (D.7)
